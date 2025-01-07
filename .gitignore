@@ -1,0 +1,8 @@
+# Jetbrain IDE
+.idea/
+
+# VSCode
+.vscode/
+
+# MacOS Specifics
+.DS_Store
