@@ -6,3 +6,6 @@
 
 # MacOS Specifics
 .DS_Store
+
+# data Directory
+data/
