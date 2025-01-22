@@ -1,0 +1,12 @@
+name: polaris
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - polaris>=0.11.2
+  - rdkit
+  - matplotlib
+  - numpy
+  - jupyter
+  - pandas
+  - seaborn
