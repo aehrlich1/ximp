@@ -1,5 +1,0 @@
-batch_size: 32
-epochs: 200
-pretrain_model: "ECFP"
-lr: 0.001
-task: "admet"

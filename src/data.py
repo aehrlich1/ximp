@@ -5,7 +5,7 @@ import torch
 from torch.utils.data import Dataset
 
 
-class AdmetDataset(Dataset):
+class AdmetPotencyDataset(Dataset):
     def __init__(self, dataset):
         self.dataset = dataset
 
@@ -18,7 +18,7 @@ class AdmetDataset(Dataset):
         return smiles, label
 
 
-class AdmetTestDataset(Dataset):
+class AdmetPotencyTestDataset(Dataset):
     def __init__(self, dataset):
         self.dataset = dataset
 

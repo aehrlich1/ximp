@@ -18,8 +18,8 @@ from src.transform import OGBTransform, JunctionTree
 
 
 class ExtendedConnectivityFingerprintModel:
-    def __init__(self):
-        self.fpgen = AllChem.GetMorganGenerator(radius=2, fpSize=1024)
+    def __init__(self, latent_dim=1024):
+        self.fpgen = AllChem.GetMorganGenerator(radius=2, fpSize=latent_dim) #TODO: Put in the config
 
     def __call__(self, dataloader):
         mols = [Chem.MolFromSmiles(smiles) for smiles in dataloader]
@@ -28,10 +28,10 @@ class ExtendedConnectivityFingerprintModel:
 
 
 class EcfpModel(nn.Module):
-    def __init__(self):
+    def __init__(self, latent_dim=128):
         super().__init__()
-        self.ecfp_model = ExtendedConnectivityFingerprintModel()
-        self.linear = nn.Linear(1024, 128)
+        self.ecfp_model = ExtendedConnectivityFingerprintModel(latent_dim)
+        #self.linear = nn.Linear(1024, latent_dim)
 
     def forward(self, data):
         ecfps = self.ecfp_model(data)
@@ -41,34 +41,39 @@ class EcfpModel(nn.Module):
 
 
 class ProjectionHead(nn.Module):
-    def __init__(self, in_dim, out_dim):
+    def __init__(self, in_dim, out_dim, hidden_dim=64):
         super().__init__()
         self.projection = nn.Sequential(
-            nn.Linear(in_dim, 64),
+            nn.Linear(in_dim, hidden_dim),
             nn.ReLU(),
-            nn.Linear(64, 32),
+            nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
-            nn.Linear(32, out_dim),
+            nn.Linear(hidden_dim, out_dim),
         )
 
     def forward(self, data):
         return self.projection(data)
 
-class AdmetModel(nn.Module):
-    def __init__(self, in_dim, out_dim):
+class AdmetPotencyModel(nn.Module):
+    def __init__(self, latent_dim, projector_dim, repr_himp_hidden_dim=9, rep_himp_num_layers= 2, rep_himp_dropout=0.5, rep_himp_inter=True, repr_type ='HIMP'):
+       #print(latent_dim, projector_dim, flush=True)
+        #exit(-1)
         super().__init__()
-        self.repr_model = HIMPModel(hidden_channels=9,
-                                    out_channels=64,
-                                    num_layers=2,
-                                    dropout=0.5,
-                                    inter_message_passing=True
-                                    )#EcfpModel() #Here a switch that changes repr. models?
-        self.proj_model = ProjectionHead(64, out_dim) #in_dim
+        self.repr_model = None
+        if repr_type == 'HIMP':
+            self.repr_model = HIMPModel(hidden_channels=repr_himp_hidden_dim,
+                                        out_channels=latent_dim,
+                                        num_layers=rep_himp_num_layers,
+                                        dropout=rep_himp_dropout,
+                                        inter_message_passing=rep_himp_inter
+                                        )
+        elif repr_type == 'ECFP':
+            self.repr_model = EcfpModel(latent_dim=latent_dim) # Produces outputs in latent dim
+        self.proj_model = ProjectionHead(in_dim=latent_dim, out_dim=1, hidden_dim=projector_dim) #in_dim
 
     def forward(self, data):
         h = self.repr_model(data)
         z = self.proj_model(h)
-
         return z
 
 
@@ -78,8 +83,8 @@ class AtomEncoder(torch.nn.Module):
 
         self.embeddings = torch.nn.ModuleList()
 
-        for i in range(9):  # 9
-            self.embeddings.append(Embedding(100, hidden_channels))
+        for i in range(9):  # TODO: From config or infer
+            self.embeddings.append(Embedding(100, hidden_channels)) # TODO From config or infer
 
     def reset_parameters(self):
         for embedding in self.embeddings:
@@ -101,10 +106,10 @@ class BondEncoder(torch.nn.Module):
 
         self.embeddings = torch.nn.ModuleList()
 
-        for i in range(3):
+        for i in range(3): # TODO: From config or infer
             self.embeddings.append(Embedding(
                 100  # 6, for testing
-                , hidden_channels))
+                , hidden_channels)) # TODO From config or infer
 
     def reset_parameters(self):
         for embedding in self.embeddings:
