@@ -8,7 +8,7 @@ from torch import nn
 from torch.utils.data import DataLoader, random_split
 
 from src.data import AdmetDataset, AdmetTestDataset
-from src.models import AdmetModel
+from src.models import AdmetModel, HierarchicalModel
 from src.utils import filter_and_extract, PerformanceTracker
 
 
