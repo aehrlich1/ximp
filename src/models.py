@@ -5,6 +5,16 @@ import torch
 from torch import nn
 from rdkit import Chem
 from rdkit.Chem import AllChem
+# Needed for HIMP
+import torch.nn.functional as F
+from torch.nn import Embedding, ModuleList
+from torch.nn import Sequential, Linear, BatchNorm1d, ReLU
+from torch_geometric.data import Batch
+from torch_geometric.utils import from_smiles
+from torch_scatter import scatter
+from torch_geometric.nn import GINConv, GINEConv, PairNorm
+
+from src.transform import OGBTransform, JunctionTree
 
 
 class ExtendedConnectivityFingerprintModel:
@@ -47,24 +57,19 @@ class ProjectionHead(nn.Module):
 class AdmetModel(nn.Module):
     def __init__(self, in_dim, out_dim):
         super().__init__()
-        self.repr_model = EcfpModel()
-        self.proj_model = ProjectionHead(in_dim, out_dim)
+        self.repr_model = HIMPModel(hidden_channels=9,
+                                    out_channels=64,
+                                    num_layers=2,
+                                    dropout=0.5,
+                                    inter_message_passing=True
+                                    )#EcfpModel() #Here a switch that changes repr. models?
+        self.proj_model = ProjectionHead(64, out_dim)
 
     def forward(self, data):
         h = self.repr_model(data)
         z = self.proj_model(h)
 
         return z
-
-
-import torch
-import torch.nn.functional as F
-from torch.nn import Embedding, ModuleList
-from torch.nn import Sequential, Linear, BatchNorm1d, ReLU
-from torch_scatter import scatter
-from torch_geometric.nn import GINConv, GINEConv
-
-from torch_geometric.nn.norm import PairNorm
 
 
 class AtomEncoder(torch.nn.Module):
@@ -116,15 +121,15 @@ class BondEncoder(torch.nn.Module):
         return out
 
 
-class HierarchicalModel(torch.nn.Module):
+class HIMPModel(torch.nn.Module):
     #https://arxiv.org/abs/2006.12179, published @ ICML2020
     def __init__(self, hidden_channels, out_channels, num_layers, dropout=0.0,
                  inter_message_passing=True):
-        super(HierarchicalModel, self).__init__()
+        super(HIMPModel, self).__init__()
         self.num_layers = num_layers
         self.dropout = dropout
         self.inter_message_passing = inter_message_passing
-        # self.clique_norm = PairNorm(scale_individually=True) # Added
+        self.clique_norm = PairNorm(scale_individually=True) # Added
 
         self.atom_encoder = AtomEncoder(hidden_channels)
         self.clique_encoder = Embedding(4, hidden_channels)
@@ -193,7 +198,12 @@ class HierarchicalModel(torch.nn.Module):
         self.clique_lin.reset_parameters()
         self.lin.reset_parameters()
 
+    def __pre_forward(self, data):
+        data = [OGBTransform()(JunctionTree()(from_smiles(x[0]))) for x in data]
+        return Batch.from_data_list(data)
+
     def forward(self, data):
+        data = self.__pre_forward(data)
         x = self.atom_encoder(data.x.squeeze())
 
         if self.inter_message_passing:
@@ -234,10 +244,11 @@ class HierarchicalModel(torch.nn.Module):
             x_clique = F.dropout(x_clique, self.dropout,
                                  training=self.training)
             x_clique = self.clique_lin(x_clique)
-            # x_clique = self.clique_norm(x_clique) #Added
+            #x_clique = self.clique_norm(x_clique) #Added
             x = x + x_clique
 
         x = F.relu(x)
         x = F.dropout(x, self.dropout, training=self.training)
         x = self.lin(x)
+        x = self.clique_norm(x)
         return x

@@ -4,8 +4,16 @@ This file will contain utility functions to be used by everybody
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from matplotlib import pyplot as plt
 
+import torch
+from matplotlib import pyplot as plt
+from torch_geometric.data import Batch
+
+
+def custom_collate(batch):
+    graphs = [b[0] for b in batch]  # Extract graph data
+    targets = torch.tensor([b[1] for b in batch], dtype=torch.float32)  # Extract targets
+    return Batch.from_data_list(graphs), targets  # Return batched graph and target tensor
 
 def filter_and_extract(polaris_train, target_col):
     return [
