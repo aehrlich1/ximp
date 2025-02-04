@@ -63,7 +63,7 @@ class AdmetModel(nn.Module):
                                     dropout=0.5,
                                     inter_message_passing=True
                                     )#EcfpModel() #Here a switch that changes repr. models?
-        self.proj_model = ProjectionHead(64, out_dim)
+        self.proj_model = ProjectionHead(64, out_dim) #in_dim
 
     def forward(self, data):
         h = self.repr_model(data)
@@ -129,7 +129,7 @@ class HIMPModel(torch.nn.Module):
         self.num_layers = num_layers
         self.dropout = dropout
         self.inter_message_passing = inter_message_passing
-        self.clique_norm = PairNorm(scale_individually=True) # Added
+        #self.clique_norm = PairNorm(scale_individually=True) # Added
 
         self.atom_encoder = AtomEncoder(hidden_channels)
         self.clique_encoder = Embedding(4, hidden_channels)
@@ -250,5 +250,5 @@ class HIMPModel(torch.nn.Module):
         x = F.relu(x)
         x = F.dropout(x, self.dropout, training=self.training)
         x = self.lin(x)
-        x = self.clique_norm(x)
+        #x = self.clique_norm(x)
         return x
