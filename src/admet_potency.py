@@ -234,10 +234,17 @@ def main(config):
 
 if __name__ == '__main__':
     # Read YAML file from disk
-    #path = "./config/config_potency_admet_ecfp.yml"
-    path = "./config/config_potency_admet_himp.yml"
-    with open(path, "r") as file:
-        config = convert_numbers(yaml.safe_load(file))  # Converts YAML to dictionary
-    # Print the dictionary
-    print(config)
-    main(config)
+    for path in [
+        "./config/config_admet_ecfp.yml",
+        "./config/config_potency_ecfp.yml",
+        "./config/config_admet_himp.yml",
+        "./config/config_potency_himp.yml"
+    ]:
+        try:
+            with open(path, "r") as file:
+                config = convert_numbers(yaml.safe_load(file))  # Converts YAML to dictionary
+            # Print the dictionary
+            print(config)
+            main(config)
+        except:
+            pass # We will find out if one experiement crashed if it has finished but no results stored. TODO: Catch & handle

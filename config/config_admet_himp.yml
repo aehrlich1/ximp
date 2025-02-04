@@ -1,0 +1,14 @@
+batch_size: [32, 64]
+epochs: 200
+lr: [1e-3, 1e-2]
+latent_dim: [32, 64]
+projector_dim: [32, 64]
+num_cv_folds: 10
+num_cv_bins: 10
+scaffold_split_val_sz : 0.1
+task: "admet"
+repr_type: "HIMP"
+repr_himp_hidden_dim : [9]
+rep_himp_num_layers : [1, 2]
+rep_himp_dropout : [0.1, 0.5]
+rep_himp_inter : [True, False]
