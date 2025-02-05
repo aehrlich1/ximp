@@ -43,16 +43,18 @@ class EcfpModel(nn.Module):
 class ProjectionHead(nn.Module):
     def __init__(self, in_dim, out_dim, hidden_dim=64):
         super().__init__()
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.projection = nn.Sequential(
             nn.Linear(in_dim, hidden_dim),
             nn.ReLU(),
             nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
             nn.Linear(hidden_dim, out_dim),
-        )
+        ).to(self.device)
+
 
     def forward(self, data):
-        return self.projection(data)
+        return self.projection(data.to(self.device))
 
 class AdmetPotencyModel(nn.Module):
     def __init__(self, latent_dim, projector_dim, repr_himp_hidden_dim=9, rep_himp_num_layers= 2, rep_himp_dropout=0.5, rep_himp_inter=True, repr_type ='HIMP'):
@@ -60,6 +62,7 @@ class AdmetPotencyModel(nn.Module):
         #exit(-1)
         super().__init__()
         self.repr_model = None
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         if repr_type == 'HIMP':
             self.repr_model = HIMPModel(hidden_channels=repr_himp_hidden_dim,
                                         out_channels=latent_dim,
@@ -82,9 +85,9 @@ class AtomEncoder(torch.nn.Module):
         super(AtomEncoder, self).__init__()
 
         self.embeddings = torch.nn.ModuleList()
-
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         for i in range(9):  # TODO: From config or infer
-            self.embeddings.append(Embedding(100, hidden_channels)) # TODO From config or infer
+            self.embeddings.append(Embedding(100, hidden_channels).to(self.device)) # TODO From config or infer
 
     def reset_parameters(self):
         for embedding in self.embeddings:
@@ -105,11 +108,11 @@ class BondEncoder(torch.nn.Module):
         super(BondEncoder, self).__init__()
 
         self.embeddings = torch.nn.ModuleList()
-
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         for i in range(3): # TODO: From config or infer
             self.embeddings.append(Embedding(
                 100  # 6, for testing
-                , hidden_channels)) # TODO From config or infer
+                , hidden_channels).to(self.device)) # TODO From config or infer
 
     def reset_parameters(self):
         for embedding in self.embeddings:
@@ -131,6 +134,7 @@ class HIMPModel(torch.nn.Module):
     def __init__(self, hidden_channels, out_channels, num_layers, dropout=0.0,
                  inter_message_passing=True):
         super(HIMPModel, self).__init__()
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.num_layers = num_layers
         self.dropout = dropout
         self.inter_message_passing = inter_message_passing
@@ -205,7 +209,7 @@ class HIMPModel(torch.nn.Module):
 
     def __pre_forward(self, data):
         data = [OGBTransform()(JunctionTree()(from_smiles(x[0]))) for x in data]
-        return Batch.from_data_list(data)
+        return Batch.from_data_list(data).to(self.device)
 
     def forward(self, data):
         data = self.__pre_forward(data)

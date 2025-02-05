@@ -31,7 +31,9 @@ class AdmetPotency:
         self.train_dataloader = None
         self.valid_dataloader = None
         self.test_dataloader = None
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self._initialize()
+
 
     def _initialize(self):
         self._initialize_loss_fn()
@@ -46,6 +48,7 @@ class AdmetPotency:
         self.model = AdmetPotencyModel(latent_dim=latent_dim, projector_dim=projector_dim, repr_himp_hidden_dim=repr_himp_hidden_dim,
                                        rep_himp_num_layers= rep_himp_num_layers, rep_himp_dropout=rep_himp_dropout,
                                        rep_himp_inter=rep_himp_inter, repr_type=repr_type) #TODO Make kwargs (also in other methods with long kw lists)
+        self.model.to(self.device)
 
     def _initialize_optimizer(self, lr=0.001):
         self.optimizer = Adam(self.model.parameters(), lr=lr)
@@ -183,7 +186,7 @@ class AdmetPotency:
         self.model.train()
         epoch_loss = 0
         for batch, (smiles, labels) in enumerate(dataloader):
-            labels = labels.view(-1, 1)
+            labels = labels.view(-1, 1).to(self.device)
             out = self.model(smiles)
             loss = self.loss_fn(out, labels)
             self.optimizer.zero_grad()
@@ -200,7 +203,7 @@ class AdmetPotency:
 
         with torch.no_grad():
             for smiles, labels in dataloader:
-                labels = labels.view(-1, 1)
+                labels = labels.view(-1, 1).to(self.device)
                 out = self.model(smiles)
                 loss = self.loss_fn(out, labels)
                 epoch_loss += loss.item()
@@ -233,18 +236,20 @@ def main(config):
     #)
 
 if __name__ == '__main__':
+    #TODO: Make this run on GPU! Currently runs CPU based, terribly inefficient.
+
     # Read YAML file from disk
     for path in [
-        "./config/config_admet_ecfp.yml",
-        "./config/config_potency_ecfp.yml",
+        #"./config/config_admet_ecfp.yml",
+        #"./config/config_potency_ecfp.yml",
         "./config/config_admet_himp.yml",
-        "./config/config_potency_himp.yml"
+        #"./config/config_potency_himp.yml"
     ]:
-        try:
-            with open(path, "r") as file:
-                config = convert_numbers(yaml.safe_load(file))  # Converts YAML to dictionary
-            # Print the dictionary
-            print(config)
-            main(config)
-        except:
-            pass # We will find out if one experiement crashed if it has finished but no results stored. TODO: Catch & handle
+        #try:
+        with open(path, "r") as file:
+            config = convert_numbers(yaml.safe_load(file))  # Converts YAML to dictionary
+        # Print the dictionary
+        print(config)
+        main(config)
+        #except:
+        #    pass # We will find out if one experiement crashed if it has finished but no results stored. TODO: Catch & handle
