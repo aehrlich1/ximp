@@ -1,12 +1,17 @@
 name: polaris
 channels:
+  - pytorch
   - conda-forge
   - defaults
 dependencies:
   - polaris>=0.11.2
+  - pytorch
+  - pytorch_geometric
+  - torchvision
   - rdkit
   - matplotlib
   - numpy
   - jupyter
   - pandas
   - seaborn
+  - tqdm
