@@ -12,9 +12,11 @@ from torch.nn import Sequential, Linear, BatchNorm1d, ReLU
 from torch_geometric.data import Batch
 from torch_geometric.utils import from_smiles
 from torch_scatter import scatter
-from torch_geometric.nn import GINConv, GINEConv, PairNorm
-
+from torch_geometric.nn import GINConv, GINEConv, PairNorm, GCN, GraphSAGE, GAT, PNA
+from torch_geometric.nn import GIN
+from types import MethodType
 from src.transform import OGBTransform, JunctionTree
+from src.utils import wrapped_forward
 
 
 class ExtendedConnectivityFingerprintModel:
@@ -72,6 +74,18 @@ class AdmetPotencyModel(nn.Module):
                                         )
         elif repr_type == 'ECFP':
             self.repr_model = EcfpModel(latent_dim=latent_dim) # Produces outputs in latent dim
+        elif repr_type == 'GIN':
+            self.repr_model = GIN(in_channels=repr_himp_hidden_dim, hidden_channels=repr_himp_hidden_dim, out_channels=latent_dim,
+                                  num_layers=rep_himp_num_layers, dropout=rep_himp_dropout)
+            self.repr_model.device = self.device
+            self.repr_model._original_forward = self.repr_model.forward
+            self.repr_model.forward = MethodType(wrapped_forward, self.repr_model) # A hacky but efficient trick Anatol will hate me for
+        elif repr_type == 'GCN':
+            self.repr_model = GCN(in_channels=repr_himp_hidden_dim, hidden_channels=repr_himp_hidden_dim, out_channels=latent_dim,
+                                  num_layers=rep_himp_num_layers,  dropout=rep_himp_dropout)
+            self.repr_model.device = self.device
+            self.repr_model._original_forward = self.repr_model.forward
+            self.repr_model.forward = MethodType(wrapped_forward, self.repr_model) # A hacky but efficient trick Anatol will hate me for
         self.proj_model = ProjectionHead(in_dim=latent_dim, out_dim=1, hidden_dim=projector_dim) #in_dim
 
     def forward(self, data):

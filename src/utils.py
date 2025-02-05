@@ -12,6 +12,10 @@ from rdkit.Chem.Scaffolds import MurckoScaffold
 from sklearn.model_selection import train_test_split
 from torch_geometric.data import Batch
 import re
+
+from torch_geometric.utils import from_smiles
+
+
 ### Function to compute scaffold
 def compute_scaffold(smiles):
     """Convert SMILES to scaffold using RDKit."""
@@ -55,6 +59,15 @@ def ScaffoldSplit(dataset, test_size=0.2):
         test_data_list.append((smiles, test_target_list[idx]))
 
     return train_data_list, test_data_list
+
+
+def wrapped_forward(self, data):
+    data = [from_smiles(x[0]) for x in data]
+    data = Batch.from_data_list(data).to(self.device)
+    x, edge_index, batch = data.x, data.edge_index, data.batch
+    out = self._original_forward(x=x, edge_index=edge_index, batch=batch)
+    return out
+
 
 def custom_collate(batch):
     graphs = [b[0] for b in batch]  # Extract graph data

@@ -54,7 +54,7 @@ class AdmetPotency:
         self.optimizer = Adam(self.model.parameters(), lr=lr)
 
     def _initialize_data(self):
-        #TODO: Integrate in confif
+        #TODO: Integrate in config or remove bc deprecated
         self.competition = po.load_competition("asap-discovery/antiviral-{}-2025".format(self.params['task']))
         data_dir: Path = Path("../data/antiviral-{}-2025".format(self.params['task']))
         self.competition.cache(data_dir)
@@ -103,7 +103,7 @@ class AdmetPotency:
         # Example: learning rate & batch size optimization via GridSearch
         if self.params['repr_type'] == "ECFP":
             combinations = list(product(self.params['lr'], self.params['batch_size'], self.params['latent_dim'], self.params['projector_dim'], [None], [None], [None], [None]))
-        elif self.params['repr_type'] == "HIMP":
+        elif self.params['repr_type'] in ["HIMP", "GIN", "GCN"]:
             combinations = list(product(self.params['lr'], self.params['batch_size'], self.params['latent_dim'], self.params['projector_dim'],
                                         self.params['repr_himp_hidden_dim'], self.params['rep_himp_num_layers'], self.params['rep_himp_dropout'], self.params['rep_himp_inter']
                                         ))
@@ -113,7 +113,7 @@ class AdmetPotency:
         for combination_idx, combination in enumerate(combinations):
             print('Combination {} of {}'.format(combination_idx+1, len(combinations)))
             val_loss_list = []
-            for fold, (train_idx, valid_idx) in tqdm(enumerate(skf.split(X, y_binned))):
+            for fold, (train_idx, valid_idx) in enumerate(skf.split(X, y_binned)):#tqdm(enumerate(skf.split(X, y_binned))):
                 # Reinitialize stateful components
                 self.performance_tracker.reset()
                 self._initialize_model(combination[2], combination[3], combination[4], combination[5], combination[6], combination[7], repr_type=self.params['repr_type'])
@@ -135,7 +135,7 @@ class AdmetPotency:
             if np.mean(val_loss_list) < best_mean_val_loss:
                 best_mean_val_loss = mean_val_loss
                 best_combination = combination_idx
-
+            print(np.mean(val_loss_list), best_mean_val_loss, combinations[best_combination])
         print('Best loss, hyperparameters:', best_mean_val_loss, combinations[best_combination])
 
         # Now train using the valid scaffold and best combination
@@ -236,14 +236,12 @@ def main(config):
     #)
 
 if __name__ == '__main__':
-    #TODO: Make this run on GPU! Currently runs CPU based, terribly inefficient.
-
     # Read YAML file from disk
     for path in [
         #"./config/config_admet_ecfp.yml",
         #"./config/config_potency_ecfp.yml",
-        "./config/config_admet_himp.yml",
-        #"./config/config_potency_himp.yml"
+        #"./config/config_admet_himp.yml",
+        "./config/config_potency_himp.yml"
     ]:
         #try:
         with open(path, "r") as file:
