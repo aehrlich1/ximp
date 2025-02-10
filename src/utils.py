@@ -11,7 +11,7 @@ from rdkit import Chem
 from rdkit.Chem.Scaffolds import MurckoScaffold
 from sklearn.model_selection import train_test_split
 from torch_geometric.data import Batch
-import re
+import yaml
 
 from torch_geometric.utils import from_smiles
 
@@ -179,3 +179,11 @@ class PerformanceTracker:
         for key, value in data.items():
             attr = getattr(self, key)
             attr.append(value)
+
+
+def load_yaml_to_dict(config_filename: str) -> dict:
+    path = Path(".") / "config" / config_filename
+    with open(path, "r") as file:
+        config: dict = yaml.safe_load(file)
+
+    return config

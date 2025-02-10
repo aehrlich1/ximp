@@ -55,7 +55,7 @@ class AdmetPotency:
 
     def _initialize_data(self):
         #TODO: Integrate in config or remove bc deprecated
-        self.competition = po.load_competition("asap-discovery/antiviral-{}-2025".format(self.params['task']))
+        self.competition = po.load_competition(f"asap-discovery/{self.params["task"]}-2025")
         data_dir: Path = Path("../data/antiviral-{}-2025".format(self.params['task']))
         self.competition.cache(data_dir)
 
@@ -81,8 +81,8 @@ class AdmetPotency:
         self.test_dataloader = test_dataloader
 
     def cross_validate(self):
-        self.competition = po.load_competition("asap-discovery/antiviral-{}-2025".format(self.params['task']))
-        data_dir: Path = Path("../data/antiviral-{}-2025".format(self.params['task']))
+        self.competition = po.load_competition(f"asap-discovery/{self.params["task"]}-2025")
+        data_dir: Path = Path(f"./data/{self.params["task"]}-2025")
         self.competition.cache(data_dir)
 
         train, test = self.competition.get_train_test_split()
@@ -213,10 +213,10 @@ class AdmetPotency:
 
 def main(config):
     y_pred = {}
-    competition = po.load_competition("asap-discovery/antiviral-{}-2025".format(config["task"]))
+    competition = po.load_competition(f"asap-discovery/{config["task"]}-2025")
     target_cols = competition.target_cols
     for target_col in target_cols:
-        performance_tracker = PerformanceTracker(tracking_dir=Path("../models"), id_run=target_col)
+        performance_tracker = PerformanceTracker(tracking_dir=Path("./models"), id_run=target_col)
         params = config
         params["target_col"] = target_col
         potency = AdmetPotency(params=config, performance_tracker=performance_tracker)
@@ -225,29 +225,6 @@ def main(config):
         y = potency.predict()
         y_pred[target_col] = torch.flatten(y).tolist()
 
-    #TODO: Anatols job
-    #print(y_pred)
-    #competition.submit_predictions(
-    #    predictions = y_pred,
-    #    prediction_name = "ecfp_simple",
-    #    prediction_owner = "aehrlich",
-    #    report_url = "https://www.example.com",
-    #    description = "First test submission"
-    #)
 
 if __name__ == '__main__':
-    # Read YAML file from disk
-    for path in [
-        #"./config/config_admet_ecfp.yml",
-        #"./config/config_potency_ecfp.yml",
-        #"./config/config_admet_himp.yml",
-        "./config/config_potency_himp.yml"
-    ]:
-        #try:
-        with open(path, "r") as file:
-            config = convert_numbers(yaml.safe_load(file))  # Converts YAML to dictionary
-        # Print the dictionary
-        print(config)
-        main(config)
-        #except:
-        #    pass # We will find out if one experiement crashed if it has finished but no results stored. TODO: Catch & handle
+    print("No direct call allowed to this file.")
