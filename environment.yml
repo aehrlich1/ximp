@@ -1,7 +1,0 @@
-name: polaris
-channels:
-  - conda-forge
-dependencies:
-  - polaris
-  - rdkit
-  - tqdm
