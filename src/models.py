@@ -19,9 +19,71 @@ from src.transform import OGBTransform, JunctionTree
 from src.utils import wrapped_forward
 
 
+def create_repr_model(params: dict) -> nn.Module:
+    match params['repr_model']:
+        case "HIMP":
+            repr_model = HIMPModel(
+                hidden_channels=params['hidden_channels'],
+                out_channels=params['out_channels'],
+                num_layers=params['num_layers'],
+                dropout=params['dropout'],
+                inter_message_passing=params['inter_message_passing'],
+            )
+        case "ECFP":
+            repr_model = ECFPModel(fpSize=params['latent_dim'])
+        case "GIN":
+            repr_model = GIN(
+                in_channels=params['in_channels'],
+                hidden_channels=params['hidden_channels'],
+                out_channels=params['out_channels'],
+                num_layers=params['num_layers'],
+                dropout=params['dropout'],
+            )
+        case "GCN":
+            repr_model = GCN(
+                in_channels=params['in_channels'],
+                hidden_channels=params['hidden_channels'],
+                out_channels=params['out_channels'],
+                num_layers=params['num_layers'],
+                dropout=params['dropout'],
+            )
+        case _:
+            raise NotImplementedError
+
+    return repr_model
+
+
+def create_proj_model(params: dict, hidden_dim: int = 64) -> nn.Module:
+    return ProjectionHead(in_dim=params["latent_dim"], out_dim=params["out_dim"], hidden_dim=hidden_dim)
+
+
+class PolarisModel(nn.Module):
+    def __init__(self, repr_model: nn.Module, proj_model: nn.Module):
+        super().__init__()
+        self.repr_model = repr_model
+        self.proj_model = proj_model
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+    def forward(self, data):
+        h = self.repr_model(data)
+        z = self.proj_model(h)
+        return z.to(self.device)
+
+
+class ECFPModel(nn.Module):
+    def __init__(self, fpSize=1024):
+        super().__init__()
+        self.fpgen = AllChem.GetMorganGenerator(radius=2, fpSize=fpSize)  # TODO: Put in the config
+
+    def forward(self, data):
+        mols = [Chem.MolFromSmiles(smiles) for smiles in data]
+        ecfps = [list(ecfp) for ecfp in self.fpgen.GetFingerprints(mols)]
+        return torch.tensor(ecfps, dtype=torch.float32)  # could also return as uint
+
+
 class ExtendedConnectivityFingerprintModel:
     def __init__(self, latent_dim=1024):
-        self.fpgen = AllChem.GetMorganGenerator(radius=2, fpSize=latent_dim) #TODO: Put in the config
+        self.fpgen = AllChem.GetMorganGenerator(radius=2, fpSize=latent_dim)  # TODO: Put in the config
 
     def __call__(self, dataloader):
         mols = [Chem.MolFromSmiles(smiles) for smiles in dataloader]
@@ -33,7 +95,7 @@ class EcfpModel(nn.Module):
     def __init__(self, latent_dim=128):
         super().__init__()
         self.ecfp_model = ExtendedConnectivityFingerprintModel(latent_dim)
-        #self.linear = nn.Linear(1024, latent_dim)
+        # self.linear = nn.Linear(1024, latent_dim)
 
     def forward(self, data):
         ecfps = self.ecfp_model(data)
@@ -54,14 +116,15 @@ class ProjectionHead(nn.Module):
             nn.Linear(hidden_dim, out_dim),
         ).to(self.device)
 
-
     def forward(self, data):
         return self.projection(data.to(self.device))
 
+
 class AdmetPotencyModel(nn.Module):
-    def __init__(self, latent_dim, projector_dim, repr_himp_hidden_dim=9, rep_himp_num_layers= 2, rep_himp_dropout=0.5, rep_himp_inter=True, repr_type ='HIMP'):
-       #print(latent_dim, projector_dim, flush=True)
-        #exit(-1)
+    def __init__(self, latent_dim, projector_dim, repr_himp_hidden_dim=9, rep_himp_num_layers=2, rep_himp_dropout=0.5,
+                 rep_himp_inter=True, repr_type='HIMP'):
+        # print(latent_dim, projector_dim, flush=True)
+        # exit(-1)
         super().__init__()
         self.repr_model = None
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -73,20 +136,24 @@ class AdmetPotencyModel(nn.Module):
                                         inter_message_passing=rep_himp_inter
                                         )
         elif repr_type == 'ECFP':
-            self.repr_model = EcfpModel(latent_dim=latent_dim) # Produces outputs in latent dim
+            self.repr_model = EcfpModel(latent_dim=latent_dim)  # Produces outputs in latent dim
         elif repr_type == 'GIN':
-            self.repr_model = GIN(in_channels=repr_himp_hidden_dim, hidden_channels=repr_himp_hidden_dim, out_channels=latent_dim,
+            self.repr_model = GIN(in_channels=repr_himp_hidden_dim, hidden_channels=repr_himp_hidden_dim,
+                                  out_channels=latent_dim,
                                   num_layers=rep_himp_num_layers, dropout=rep_himp_dropout)
             self.repr_model.device = self.device
             self.repr_model._original_forward = self.repr_model.forward
-            self.repr_model.forward = MethodType(wrapped_forward, self.repr_model) # A hacky but efficient trick Anatol will hate me for
+            self.repr_model.forward = MethodType(wrapped_forward,
+                                                 self.repr_model)  # A hacky but efficient trick Anatol will hate me for
         elif repr_type == 'GCN':
-            self.repr_model = GCN(in_channels=repr_himp_hidden_dim, hidden_channels=repr_himp_hidden_dim, out_channels=latent_dim,
-                                  num_layers=rep_himp_num_layers,  dropout=rep_himp_dropout)
+            self.repr_model = GCN(in_channels=repr_himp_hidden_dim, hidden_channels=repr_himp_hidden_dim,
+                                  out_channels=latent_dim,
+                                  num_layers=rep_himp_num_layers, dropout=rep_himp_dropout)
             self.repr_model.device = self.device
             self.repr_model._original_forward = self.repr_model.forward
-            self.repr_model.forward = MethodType(wrapped_forward, self.repr_model) # A hacky but efficient trick Anatol will hate me for
-        self.proj_model = ProjectionHead(in_dim=latent_dim, out_dim=1, hidden_dim=projector_dim) #in_dim
+            self.repr_model.forward = MethodType(wrapped_forward,
+                                                 self.repr_model)  # A hacky but efficient trick Anatol will hate me for
+        self.proj_model = ProjectionHead(in_dim=latent_dim, out_dim=1, hidden_dim=projector_dim)  # in_dim
 
     def forward(self, data):
         h = self.repr_model(data)
@@ -101,7 +168,7 @@ class AtomEncoder(torch.nn.Module):
         self.embeddings = torch.nn.ModuleList()
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         for i in range(9):  # TODO: From config or infer
-            self.embeddings.append(Embedding(100, hidden_channels).to(self.device)) # TODO From config or infer
+            self.embeddings.append(Embedding(100, hidden_channels).to(self.device))  # TODO From config or infer
 
     def reset_parameters(self):
         for embedding in self.embeddings:
@@ -123,10 +190,10 @@ class BondEncoder(torch.nn.Module):
 
         self.embeddings = torch.nn.ModuleList()
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        for i in range(3): # TODO: From config or infer
+        for i in range(3):  # TODO: From config or infer
             self.embeddings.append(Embedding(
                 100  # 6, for testing
-                , hidden_channels).to(self.device)) # TODO From config or infer
+                , hidden_channels).to(self.device))  # TODO From config or infer
 
     def reset_parameters(self):
         for embedding in self.embeddings:
@@ -144,7 +211,7 @@ class BondEncoder(torch.nn.Module):
 
 
 class HIMPModel(torch.nn.Module):
-    #https://arxiv.org/abs/2006.12179, published @ ICML2020
+    # https://arxiv.org/abs/2006.12179, published @ ICML2020
     def __init__(self, hidden_channels, out_channels, num_layers, dropout=0.0,
                  inter_message_passing=True):
         super(HIMPModel, self).__init__()
@@ -152,7 +219,7 @@ class HIMPModel(torch.nn.Module):
         self.num_layers = num_layers
         self.dropout = dropout
         self.inter_message_passing = inter_message_passing
-        #self.clique_norm = PairNorm(scale_individually=True) # Added
+        # self.clique_norm = PairNorm(scale_individually=True) # Added
 
         self.atom_encoder = AtomEncoder(hidden_channels)
         self.clique_encoder = Embedding(4, hidden_channels)
@@ -267,11 +334,11 @@ class HIMPModel(torch.nn.Module):
             x_clique = F.dropout(x_clique, self.dropout,
                                  training=self.training)
             x_clique = self.clique_lin(x_clique)
-            #x_clique = self.clique_norm(x_clique) #Added
+            # x_clique = self.clique_norm(x_clique) #Added
             x = x + x_clique
 
         x = F.relu(x)
         x = F.dropout(x, self.dropout, training=self.training)
         x = self.lin(x)
-        #x = self.clique_norm(x)
+        # x = self.clique_norm(x)
         return x

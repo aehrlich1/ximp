@@ -1,0 +1,23 @@
+task: "antiviral-potency"
+
+# Learning params
+batch_size: 32 # 64
+epochs: 100
+lr: 1.0e-3
+
+# Cross validation params
+num_cv_folds: 5
+num_cv_bins: 10
+scaffold_split_val_sz : 0.1
+
+# Representation model params
+repr_model: "HIMP"
+hidden_channels: 9
+out_channels: &out_channels 32
+num_layers: 1
+dropout: 0.1
+inter_message_passing: True
+
+# Projection head model params
+latent_dim: *out_channels
+out_dim: 1

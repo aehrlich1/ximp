@@ -25,6 +25,7 @@ def compute_scaffold(smiles):
     scaffold = MurckoScaffold.MurckoScaffoldSmiles(mol=mol)
     return scaffold
 
+
 def ScaffoldSplit(dataset, test_size=0.2):
     data = pd.DataFrame({
         "smiles": [x[0] for x in dataset],
@@ -74,6 +75,7 @@ def custom_collate(batch):
     targets = torch.tensor([b[1] for b in batch], dtype=torch.float32)  # Extract targets
     return Batch.from_data_list(graphs), targets  # Return batched graph and target tensor
 
+
 def filter_and_extract(polaris_train, target_col):
     return [
         {"smiles": polaris_train[i][0],
@@ -82,7 +84,6 @@ def filter_and_extract(polaris_train, target_col):
         for i in range(len(polaris_train))
         if not np.isnan(polaris_train[i][1][target_col])
     ]
-
 
 
 def convert_numbers(obj):
@@ -113,7 +114,7 @@ class PerformanceTracker:
         self.test_pred = {}
 
         self.counter = 0
-        self.patience = 15
+        self.patience = 5
         self.best_valid_loss = float("inf")
         self.early_stop = False
 
@@ -125,7 +126,7 @@ class PerformanceTracker:
         self.test_pred = {}
 
         self.counter = 0
-        self.patience = 15
+        self.patience = 5
         self.best_valid_loss = float("inf")
         self.early_stop = False
 
@@ -187,3 +188,26 @@ def load_yaml_to_dict(config_filename: str) -> dict:
         config: dict = yaml.safe_load(file)
 
     return config
+
+
+def make_combinations(dictionary: dict, exclude_key: str = None) -> list[dict]:
+    # Start with first key-value pair
+    result = [{}]
+
+    for key, value in dictionary.items():
+        if key == exclude_key:
+            # Add this key with its list value to all existing dictionaries
+            for r in result:
+                r[key] = value
+        else:
+            # For all other keys, create combinations
+            new_result = []
+            values = [value] if not isinstance(value, list) else value
+            for r in result:
+                for v in values:
+                    new_dict = r.copy()
+                    new_dict[key] = v
+                    new_result.append(new_dict)
+            result = new_result
+
+    return result

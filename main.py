@@ -5,6 +5,7 @@ import argparse
 
 from src.utils import load_yaml_to_dict
 from src.admet_potency import main as admet_main
+from src.potency import Potency
 
 
 def main(args: dict) -> None:
@@ -14,9 +15,10 @@ def main(args: dict) -> None:
 
     match params["task"]:
         case "antiviral-ligand-poses":
-            print("Antiviral Ligand Poses is not yet implemented.")
+            raise NotImplementedError
         case "antiviral-potency":
-            admet_main(params)
+            potency = Potency(params)
+            potency.run()
         case "antiviral-admet":
             admet_main(params)
 
