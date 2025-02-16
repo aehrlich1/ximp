@@ -15,7 +15,7 @@ from src.models import PolarisModel, create_repr_model, create_proj_model
 from src.utils import PerformanceTracker, scaffold_split
 
 
-class PotencyDispatcher:
+class PolarisDispatcher:
     """
     This class will have to iterate over the available target_cols as well
     """
@@ -24,7 +24,7 @@ class PotencyDispatcher:
         pass
 
 
-class Potency:
+class Polaris:
     def __init__(self, params: dict):
         self.params: dict = params
         self.performance_tracker = PerformanceTracker(Path("./models"), id_run="x")

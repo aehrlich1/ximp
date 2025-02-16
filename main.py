@@ -4,7 +4,7 @@ This file will serve as the main entry point for the application.
 import argparse
 
 from src.utils import load_yaml_to_dict
-from src.potency import Potency
+from src.polaris import Polaris
 
 
 def main(args: dict) -> None:
@@ -16,8 +16,8 @@ def main(args: dict) -> None:
         case "antiviral-ligand-poses":
             raise NotImplementedError
         case "antiviral-potency":
-            potency = Potency(params)
-            potency.run()
+            polaris = Polaris(params)
+            polaris.run()
         case "antiviral-admet":
             raise NotImplementedError
 
