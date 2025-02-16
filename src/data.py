@@ -2,12 +2,12 @@
 This file will take care of all data related aspects.
 """
 import csv
+
 import torch
 from torch_geometric.data import Data, InMemoryDataset
 from torch_geometric.utils import from_smiles
-from torch.utils.data import Dataset
 
-from src.utils import filter_and_extract, scaffold_split
+from src.utils import scaffold_split
 
 
 class PotencyDataset(InMemoryDataset):
@@ -58,25 +58,6 @@ class PotencyDataset(InMemoryDataset):
                 data_list.append(data)
 
         self.save(data_list, self.processed_paths[1])
-
-
-class AntiviralPotencyDataset(Dataset):
-    """
-    Only takes a single prediction value.
-    """
-
-    def __init__(self, dataset):
-        # Remove all entries that are NaN
-        filtered_dataset = filter_and_extract(dataset, "pIC50 (MERS-CoV Mpro)")
-        self.dataset = filtered_dataset
-
-    def __len__(self):
-        return len(self.dataset)
-
-    def __getitem__(self, idx):
-        smiles = self.dataset[idx]["smiles"]
-        label = torch.tensor(self.dataset[idx]["label"], dtype=torch.float32)
-        return smiles, label
 
 
 if __name__ == "__main__":
