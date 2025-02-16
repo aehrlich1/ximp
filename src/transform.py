@@ -1,4 +1,4 @@
-#Based on: https://github.com/rusty1s/himp-gnn/blob/master/transform.py
+# Based on: https://github.com/rusty1s/himp-gnn/blob/master/transform.py
 from rdkit import Chem
 from rdkit.Chem.rdchem import BondType
 import torch

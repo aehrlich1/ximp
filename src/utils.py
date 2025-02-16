@@ -1,79 +1,53 @@
 """
 This file will contain utility functions to be used by everybody
 """
-import numpy as np
-import pandas as pd
 from pathlib import Path
 
-import torch
+import numpy as np
+import pandas as pd
+import yaml
 from matplotlib import pyplot as plt
 from rdkit import Chem
 from rdkit.Chem.Scaffolds import MurckoScaffold
-from sklearn.model_selection import train_test_split
-from torch_geometric.data import Batch
-import yaml
-
-from torch_geometric.utils import from_smiles
+from torch_geometric.data import InMemoryDataset
 
 
-### Function to compute scaffold
-def compute_scaffold(smiles):
-    """Convert SMILES to scaffold using RDKit."""
+def generate_scaffold(smiles) -> str | None:
     mol = Chem.MolFromSmiles(smiles)
     if mol is None:
-        return None  # Handle invalid SMILES
-    scaffold = MurckoScaffold.MurckoScaffoldSmiles(mol=mol)
+        print(f"{smiles} is not a valid SMILES. Could not generate scaffold. Returning None.")
+        return None
+    scaffold = MurckoScaffold.MurckoScaffoldSmiles(mol=mol, includeChirality=False)
     return scaffold
 
 
-def ScaffoldSplit(dataset, test_size=0.2):
-    data = pd.DataFrame({
-        "smiles": [x[0] for x in dataset],
-        "target": [x[1] for x in dataset]
-    })
+def scaffold_split(dataset: InMemoryDataset, test_size=0.2) -> tuple[InMemoryDataset, InMemoryDataset]:
+    """
+    Apply a mask to the provided dataset according to their scaffold groups.
+    Return a train/test scaffold split.
+    """
 
-    # Compute scaffolds for each molecule
-    data["scaffold"] = data["smiles"].apply(compute_scaffold)
+    # Group molecule indices by their scaffolds
+    scaffold_groups = {}
+    for idx, data in enumerate(dataset):
+        scaffold = generate_scaffold(data.smiles)
+        scaffold_groups.setdefault(scaffold, []).append(idx)
 
-    # Group by scaffold
-    scaffold_groups = data.groupby("scaffold").apply(lambda x: x.index.tolist())
+    # Sort groups by size, largest first
+    sorted_groups = sorted(scaffold_groups.values(), key=len, reverse=True)
 
-    # Sort scaffolds by frequency (larger groups first for balanced splitting)
-    scaffold_groups = sorted(scaffold_groups, key=len, reverse=True)
+    # Split into train/test while keeping scaffolds together
+    train_size = int(len(dataset) * (1 - test_size))
+    train_idx = []
+    test_idx = []
 
-    # Prepare train, validation, and test sets
-    train_scaffolds, test_scaffolds = train_test_split(scaffold_groups, test_size=0.2, random_state=42)
-    train_scaffolds = sum(train_scaffolds, [])  # Flatten list
-    test_scaffolds = sum(test_scaffolds, [])  # Flatten list
+    for group in sorted_groups:
+        if len(train_idx) + len(group) <= train_size:
+            train_idx.extend(group)
+        else:
+            test_idx.extend(group)
 
-    # Create final splits
-    train_data = data.loc[train_scaffolds].reset_index(drop=True)
-    test_data = data.loc[test_scaffolds].reset_index(drop=True)
-    train_data_list, test_data_list = [], []
-
-    train_target_list = list(train_data['target'].values)
-    for idx, smiles in enumerate(list(train_data['smiles'].values)):
-        train_data_list.append((smiles, train_target_list[idx]))
-
-    test_target_list = list(test_data['target'].values)
-    for idx, smiles in enumerate(list(test_data['smiles'].values)):
-        test_data_list.append((smiles, test_target_list[idx]))
-
-    return train_data_list, test_data_list
-
-
-def wrapped_forward(self, data):
-    data = [from_smiles(x[0]) for x in data]
-    data = Batch.from_data_list(data).to(self.device)
-    x, edge_index, batch = data.x, data.edge_index, data.batch
-    out = self._original_forward(x=x, edge_index=edge_index, batch=batch)
-    return out
-
-
-def custom_collate(batch):
-    graphs = [b[0] for b in batch]  # Extract graph data
-    targets = torch.tensor([b[1] for b in batch], dtype=torch.float32)  # Extract targets
-    return Batch.from_data_list(graphs), targets  # Return batched graph and target tensor
+    return dataset[train_idx], dataset[test_idx]
 
 
 def filter_and_extract(polaris_train, target_col):
@@ -84,24 +58,6 @@ def filter_and_extract(polaris_train, target_col):
         for i in range(len(polaris_train))
         if not np.isnan(polaris_train[i][1][target_col])
     ]
-
-
-def convert_numbers(obj):
-    """Recursively convert numbers (including scientific notation) while preserving other types."""
-    if isinstance(obj, dict):
-        return {k: convert_numbers(v) for k, v in obj.items()}
-    elif isinstance(obj, list):
-        return [convert_numbers(i) for i in obj]  # Convert list elements recursively
-    elif isinstance(obj, str):
-        # Convert valid numbers from string to int or float
-        try:
-            if "." in obj or "e" in obj or "E" in obj:  # Check for float or scientific notation
-                return float(obj)
-            else:
-                return int(obj)
-        except ValueError:
-            return obj  # Return as-is if conversion fails
-    return obj
 
 
 class PerformanceTracker:
@@ -174,7 +130,7 @@ class PerformanceTracker:
 
         if self.counter >= self.patience:
             self.early_stop = True
-            #print("Early stopping triggered.")
+            # print("Early stopping triggered.")
 
     def log(self, data: dict[str, int | float]) -> None:
         for key, value in data.items():

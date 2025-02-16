@@ -1,17 +1,18 @@
-from torch.utils.data import DataLoader, Subset
+from pathlib import Path
 
-from src.data import AntiviralPotencyDataset
-from src.models import PolarisModel, create_repr_model, create_proj_model
-from src.utils import PerformanceTracker, ScaffoldSplit
+import numpy as np
+import pandas as pd
 import polaris as po
 import torch
-import pandas as pd
-import numpy as np
-from pathlib import Path
-from torch.optim import Adam
-from torch import nn
-from tqdm import tqdm
 from sklearn.model_selection import StratifiedKFold
+from torch import nn
+from torch.optim import Adam
+from torch_geometric.loader import DataLoader
+from tqdm import tqdm
+
+from src.data import PotencyDataset
+from src.models import PolarisModel, create_repr_model, create_proj_model
+from src.utils import PerformanceTracker, scaffold_split
 
 
 class PotencyDispatcher:
@@ -29,10 +30,10 @@ class Potency:
         self.performance_tracker = PerformanceTracker(Path("./models"), id_run="x")
         self.device: str = "cpu"
         self.competition = None
-        self.dataset = None
-        self.train_dataset = None
-        self.valid_dataset = None
-        self.test_dataset = None
+        self.train_polaris = None
+        self.test_polaris = None
+        self.train_scaffold = None
+        self.test_scaffold = None
         self.loss_fn = None
         self.optimizer = None
         self.model = None
@@ -70,11 +71,8 @@ class Potency:
 
     def _init_competition(self):
         self.competition = po.load_competition("asap-discovery/antiviral-potency-2025")
-        competition_data_dir: Path = Path(f"./data/antiviral-potency-2025")
-        self.competition.cache(competition_data_dir)
 
     def _init_model(self):
-        # Create the model based on the params
         repr_model = create_repr_model(self.params)
         proj_model = create_proj_model(self.params)
         self.model = PolarisModel(repr_model, proj_model)
@@ -86,19 +84,15 @@ class Potency:
         self.optimizer = Adam(self.model.parameters(), lr=self.params['lr'])
 
     def _init_dataset(self):
-        train_dataset_polaris, test_dataset_polaris = self.competition.get_train_test_split()
-        self.test_dataset_polaris = test_dataset_polaris
+        self.train_polaris = PotencyDataset(root='./data/polaris/potency', train=True, target_col=1)
+        self.test_polaris = PotencyDataset(root='./data/polaris/potency', train=False)
 
-        # Filter values
-        potency_dataset = AntiviralPotencyDataset(train_dataset_polaris)
-        self.dataset = potency_dataset
-
-        self.train_dataset, self.valid_dataset = ScaffoldSplit(dataset=self.dataset,
-                                                               test_size=self.params["scaffold_split_val_sz"])
+        self.train_scaffold, self.test_scaffold = scaffold_split(dataset=self.train_polaris,
+                                                                 test_size=self.params["scaffold_split_val_sz"])
 
     def run(self):
-        smiles = [X[0] for X in self.train_dataset]
-        labels = [X[1] for X in self.train_dataset]
+        smiles = self.train_scaffold.smiles
+        labels = self.train_scaffold.y.view(-1).tolist()
 
         y_binned = pd.qcut(labels, q=self.params['num_cv_bins'], labels=False)
         skf = StratifiedKFold(n_splits=self.params['num_cv_folds'], shuffle=True, random_state=42)
@@ -107,31 +101,33 @@ class Potency:
         val_loss_list = []
 
         for fold, (train_idx, valid_idx) in enumerate(skf.split(smiles, y_binned)):
-            self._init_model() # Reinitialize model
+            self._init_model()  # Reinitialize model
             self._init_optimizer()
             self.performance_tracker.reset()
 
-            subset_train = Subset(self.train_dataset, train_idx)
-            subset_valid = Subset(self.train_dataset, valid_idx)
+            train_fold = self.train_scaffold[train_idx]
+            valid_fold = self.train_scaffold[valid_idx]
 
-            subset_train_dataloader = DataLoader(subset_train, batch_size=self.params['batch_size'], shuffle=True)
-            subset_valid_dataloader = DataLoader(subset_valid, batch_size=self.params['batch_size'], shuffle=False)
+            train_fold_dataloader = DataLoader(train_fold, batch_size=self.params['batch_size'], shuffle=True)
+            valid_fold_dataloader = DataLoader(valid_fold, batch_size=self.params['batch_size'], shuffle=False)
 
-            self.train(subset_train_dataloader, subset_valid_dataloader)
+            self.train(train_fold_dataloader, valid_fold_dataloader)
             val_loss_list.append(self.performance_tracker.best_valid_loss)
 
-        mean_val_loss = np.mean(val_loss_list)
-        print(f"Average validation loss: {mean_val_loss}")
+        print(f"Validation losses: {val_loss_list}")
+        print(f"Average validation loss: {np.mean(val_loss_list)}")
 
-        # TODO Optimize the model with the best parameters
+        # Optimize the model with the best parameters
+        # Return params and mean_val_loss for tracking performance for each hyperparams config
 
     def _train_loop(self, dataloader):
         self.model.train()
         epoch_loss = 0
-        for batch, (smiles, labels) in enumerate(dataloader):
-            labels = labels.view(-1, 1).to(self.device)
-            out = self.model(smiles)
-            loss = self.loss_fn(out, labels)
+
+        for data in dataloader:
+            data = data.to(self.device)
+            out = self.model(data)
+            loss = self.loss_fn(out, data.y)
             loss.backward()
             self.optimizer.step()
             self.optimizer.zero_grad()
@@ -145,10 +141,10 @@ class Potency:
         epoch_loss = 0
 
         with torch.no_grad():
-            for smiles, labels in dataloader:
-                labels = labels.view(-1, 1).to(self.device)
-                out = self.model(smiles)
-                loss = self.loss_fn(out, labels)
+            for data in dataloader:
+                data = data.to(self.device)
+                out = self.model(data)
+                loss = self.loss_fn(out, data.y)
                 epoch_loss += loss.item()
 
         average_loss = epoch_loss / len(dataloader)

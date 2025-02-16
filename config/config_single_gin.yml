@@ -1,4 +1,5 @@
 task: "antiviral-potency"
+target_task: "pIC50 (MERS-CoV Mpro)" # "pIC50 (SARS-CoV-2 Mpro)"
 
 # Learning params
 batch_size: 32
