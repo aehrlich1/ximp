@@ -5,7 +5,7 @@ import torch
 from torch import nn
 from rdkit import Chem
 from rdkit.Chem import AllChem
-from torch_geometric.nn import GCN, global_add_pool
+from torch_geometric.nn import global_add_pool
 from torch_geometric.nn import GIN
 from src.himp import HimpModel
 
@@ -31,7 +31,7 @@ def create_repr_model(params: dict) -> nn.Module:
                 dropout=params['dropout'],
             )
         case "GCN":
-            repr_model = GCN(
+            repr_model = GCNModel(
                 in_channels=params['in_channels'],
                 hidden_channels=params['hidden_channels'],
                 out_channels=params['out_channels'],
@@ -62,6 +62,21 @@ class PolarisModel(nn.Module):
 
 
 class GINModel(nn.Module):
+    def __init__(self, in_channels: int, hidden_channels: int, out_channels: int, num_layers: int, dropout: float):
+        super().__init__()
+        self.model = GIN(in_channels=in_channels, hidden_channels=hidden_channels, out_channels=out_channels,
+                         num_layers=num_layers, dropout=dropout)
+        self.pool = global_add_pool
+
+    def forward(self, data):
+        x, edge_index, edge_attr = data.x, data.edge_index, data.edge_attr
+        h = self.model(x=x, edge_index=edge_index, edge_attr=edge_attr)
+        h_G = self.pool(x=h, batch=data.batch)
+
+        return h_G
+
+
+class GCNModel(nn.Module):
     def __init__(self, in_channels: int, hidden_channels: int, out_channels: int, num_layers: int, dropout: float):
         super().__init__()
         self.model = GIN(in_channels=in_channels, hidden_channels=hidden_channels, out_channels=out_channels,
