@@ -3,7 +3,6 @@ This file will contain utility functions to be used by everybody
 """
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 import yaml
 from matplotlib import pyplot as plt
@@ -48,16 +47,6 @@ def scaffold_split(dataset: InMemoryDataset, test_size=0.2) -> tuple[InMemoryDat
             test_idx.extend(group)
 
     return dataset[train_idx], dataset[test_idx]
-
-
-def filter_and_extract(polaris_train, target_col):
-    return [
-        {"smiles": polaris_train[i][0],
-         "label": polaris_train[i][1][target_col]
-         }
-        for i in range(len(polaris_train))
-        if not np.isnan(polaris_train[i][1][target_col])
-    ]
 
 
 class PerformanceTracker:
