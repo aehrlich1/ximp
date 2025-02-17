@@ -1,3 +1,5 @@
+from concurrent.futures import ProcessPoolExecutor
+from multiprocessing import Manager
 from pathlib import Path
 
 import numpy as np
@@ -12,21 +14,62 @@ from tqdm import tqdm
 
 from src.data import PotencyDataset
 from src.models import PolarisModel, create_repr_model, create_proj_model
-from src.utils import PerformanceTracker, scaffold_split
+from src.utils import PerformanceTracker, scaffold_split, make_combinations_improved, save_dict_to_csv
+
+
+def worker(params, queue):
+    polaris = Polaris(params, queue)
+    polaris.run()
 
 
 class PolarisDispatcher:
-    """
-    This class will have to iterate over the available target_cols as well
-    """
+    def __init__(self, params: dict) -> None:
+        self.params = params
 
-    def __init__(self):
-        pass
+    def run(self):
+        with Manager() as manager:
+            queue = manager.Queue()
+
+            # TODO Fix these conversions
+            # params_list: list[dict] = make_combinations_improved(self.params, ("out_channels", "latent_dim"))
+            params_list: list[dict] = make_combinations_improved(self.params, ("fpSize", "latent_dim"))
+
+            print(f"Total param count: {len(params_list)}")
+            with ProcessPoolExecutor(max_workers=8) as executor:
+                for params in params_list:
+                    # polaris = Polaris(params, queue)
+                    # executor.submit(polaris.run)
+
+                    executor.submit(worker,params, queue)
+
+                executor.shutdown()
+
+            result = []
+            while not queue.empty():
+                result.append(queue.get())
+
+            results_path: Path = Path(".") / "results" / f"potency_{self.params['repr_model'].lower()}_results.csv"
+            results_path.parent.mkdir(parents=True, exist_ok=True)
+            save_dict_to_csv(result, results_path)
+
+    @staticmethod
+    def train_single(params: dict) -> float:
+        """
+        Take best parameters and train on train_scaffold.
+        Perform inference on test_scaffold.
+        """
+        polaris = Polaris(params)
+        polaris.train(polaris.train_scaffold, polaris.train_scaffold)
+        test_scaffold_dataloader = DataLoader(polaris.test_scaffold, batch_size=64)
+        polaris._valid_loop(test_scaffold_dataloader)
+
+        return polaris.performance_tracker.valid_loss
 
 
 class Polaris:
-    def __init__(self, params: dict):
+    def __init__(self, params: dict, queue=None):
         self.params: dict = params
+        self.queue = queue
         self.performance_tracker = PerformanceTracker(Path("./models"), id_run="x")
         self.device: str = "cpu"
         self.competition = None
@@ -40,55 +83,13 @@ class Polaris:
 
         self._init()
 
-    def train(self, train_dataloader, valid_dataloader) -> None:
-        for epoch in tqdm(range(self.params["epochs"])):
-            self.performance_tracker.log({"epoch": epoch})
-            self._train_loop(train_dataloader)
-            self._valid_loop(valid_dataloader)
-
-            self.performance_tracker.update_early_loss_state()
-            if self.performance_tracker.early_stop:
-                break
-
-    def predict(self, model_weights_path: Path | None, dataloader) -> list[dict]:
-        # 1. Take the model_weights_path and load the model
-        # 2. Model weights correspond to a set of parameters
-        # 3. Given a dataloader, make predictions on that dataloader
-        # 4. If no model weights path is provided. Initialize a random model
-        pass
-
     def _init(self):
         self._init_device()
-        self._init_competition()
+        # self._init_competition()
         self._init_dataset()
         self._init_model()
         self._init_optimizer()
         self._init_loss_fn()
-
-    def _init_device(self):
-        self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
-        print(f"Using device: {self.device}")
-
-    def _init_competition(self):
-        self.competition = po.load_competition("asap-discovery/antiviral-potency-2025")
-
-    def _init_model(self):
-        repr_model = create_repr_model(self.params)
-        proj_model = create_proj_model(self.params)
-        self.model = PolarisModel(repr_model, proj_model)
-
-    def _init_loss_fn(self):
-        self.loss_fn = nn.MSELoss()
-
-    def _init_optimizer(self):
-        self.optimizer = Adam(self.model.parameters(), lr=self.params['lr'])
-
-    def _init_dataset(self):
-        self.train_polaris = PotencyDataset(root='./data/polaris/potency', train=True, target_col=1)
-        self.test_polaris = PotencyDataset(root='./data/polaris/potency', train=False)
-
-        self.train_scaffold, self.test_scaffold = scaffold_split(dataset=self.train_polaris,
-                                                                 test_size=self.params["scaffold_split_val_sz"])
 
     def run(self):
         smiles = self.train_scaffold.smiles
@@ -117,8 +118,47 @@ class Polaris:
         print(f"Validation losses: {val_loss_list}")
         print(f"Average validation loss: {np.mean(val_loss_list)}")
 
-        # Optimize the model with the best parameters
-        # Return params and mean_val_loss for tracking performance for each hyperparams config
+        self.params.update({"mean_val_loss": np.mean(val_loss_list)})
+
+        if self.queue is not None:
+            self.queue.put(self.params)
+
+    def train(self, train_dataloader, valid_dataloader) -> None:
+        for epoch in tqdm(range(self.params["epochs"])):
+            self.performance_tracker.log({"epoch": epoch})
+            self._train_loop(train_dataloader)
+            self._valid_loop(valid_dataloader)
+
+            self.performance_tracker.update_early_loss_state()
+            if self.performance_tracker.early_stop:
+                break
+
+    def _init_device(self):
+        self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
+        print(f"Using device: {self.device}")
+
+    def _init_competition(self):
+        self.competition = po.load_competition(f"asap-discovery/antiviral-{self.params["task"]}-2025")
+
+    def _init_model(self):
+        repr_model = create_repr_model(self.params)
+        proj_model = create_proj_model(self.params)
+        self.model = PolarisModel(repr_model, proj_model)
+
+    def _init_loss_fn(self):
+        self.loss_fn = nn.MSELoss()
+
+    def _init_optimizer(self):
+        self.optimizer = Adam(self.model.parameters(), lr=self.params['lr'])
+
+    def _init_dataset(self):
+        root = Path(f"./data") / "polaris" / self.params["task"]
+
+        self.train_polaris = PotencyDataset(root=root, train=True, target_task=self.params["target_task"])
+        self.test_polaris = PotencyDataset(root=root, train=False, target_task=self.params["target_task"])
+
+        self.train_scaffold, self.test_scaffold = scaffold_split(dataset=self.train_polaris,
+                                                                 test_size=self.params["scaffold_split_val_sz"])
 
     def _train_loop(self, dataloader):
         self.model.train()
@@ -138,6 +178,7 @@ class Polaris:
 
     def _valid_loop(self, dataloader):
         self.model.eval()
+        self.performance_tracker.valid_loss = []
         epoch_loss = 0
 
         with torch.no_grad():

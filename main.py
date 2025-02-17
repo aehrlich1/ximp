@@ -4,7 +4,7 @@ This file will serve as the main entry point for the application.
 import argparse
 
 from src.utils import load_yaml_to_dict
-from src.polaris import Polaris
+from src.polaris import PolarisDispatcher
 
 
 def main(args: dict) -> None:
@@ -13,12 +13,12 @@ def main(args: dict) -> None:
     print(params)
 
     match params["task"]:
-        case "antiviral-ligand-poses":
+        case "ligand-poses":
             raise NotImplementedError
-        case "antiviral-potency":
-            polaris = Polaris(params)
-            polaris.run()
-        case "antiviral-admet":
+        case "potency":
+            polaris_dispatcher = PolarisDispatcher(params)
+            polaris_dispatcher.run()
+        case "admet":
             raise NotImplementedError
 
 if __name__ == '__main__':
