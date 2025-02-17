@@ -1,10 +1,10 @@
 task: "potency"
-target_task: "pIC50 (MERS-CoV Mpro)" # "pIC50 (SARS-CoV-2 Mpro)"
+target_task: ["pIC50 (MERS-CoV Mpro)", "pIC50 (SARS-CoV-2 Mpro)"]
 
 # Learning params
-batch_size: 32 # 64
-epochs: 100
-lr: 1.0e-3
+batch_size: [32, 64]
+epochs: 200
+lr: [1.0e-3, 1.0e-4]
 
 # Cross validation params
 num_cv_folds: 5
@@ -13,7 +13,8 @@ scaffold_split_val_sz : 0.1
 
 # Representation model params
 repr_model: "ECFP"
-fpSize: &fpSize 1024
+radius: 2
+fpSize: &fpSize [1024, 2048]
 
 # Projection head model params
 latent_dim: *fpSize

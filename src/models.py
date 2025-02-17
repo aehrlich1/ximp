@@ -21,7 +21,7 @@ def create_repr_model(params: dict) -> nn.Module:
                 inter_message_passing=params['inter_message_passing'],
             )
         case "ECFP":
-            repr_model = ECFPModel(fpSize=params['latent_dim'])
+            repr_model = ECFPModel(radius=params['radius'], fpSize=params['latent_dim'])
         case "GIN":
             repr_model = GINModel(
                 in_channels=params['in_channels'],
@@ -92,9 +92,9 @@ class GCNModel(nn.Module):
 
 
 class ECFPModel(nn.Module):
-    def __init__(self, fpSize=1024):
+    def __init__(self, radius=2, fpSize=1024):
         super().__init__()
-        self.fpgen = AllChem.GetMorganGenerator(radius=2, fpSize=fpSize)  # TODO: Put in the config
+        self.fpgen = AllChem.GetMorganGenerator(radius=radius, fpSize=fpSize)
 
     def forward(self, data):
         mols = [Chem.MolFromSmiles(smiles) for smiles in data.smiles]

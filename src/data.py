@@ -15,7 +15,7 @@ warnings.simplefilter("ignore", category=FutureWarning)
 
 
 class PotencyDataset(InMemoryDataset):
-    def __init__(self, root, train=True, target_task: str="pIC50 (MERS-CoV Mpro)", force_reload=False):
+    def __init__(self, root, target_task, train=True, force_reload=False):
         self.target_task = target_task
         self.target_col = self._admet_target_to_col_mapping(target_task)
         super().__init__(root, force_reload=force_reload)

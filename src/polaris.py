@@ -40,7 +40,8 @@ class PolarisDispatcher:
             while not queue.empty():
                 result.append(queue.get())
 
-            results_path: Path = Path(".") / "results" / f"potency_{self.params['repr_model'].lower()}_results.csv"
+            results_path: Path = Path(
+                ".") / "results" / f"{self.params["task"]}_{self.params['repr_model'].lower()}_results.csv"
             results_path.parent.mkdir(parents=True, exist_ok=True)
             save_dict_to_csv(result, results_path)
 
