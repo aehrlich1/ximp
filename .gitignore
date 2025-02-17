@@ -7,10 +7,13 @@
 # MacOS Specifics
 .DS_Store
 
-# data Directory
-data/
-
 # models
 models/
 
 __pycache__
+
+# Ignore the processed dataset files
+/data/polars/admet/process
+/data/polaris/potency/processed
+
+results/
