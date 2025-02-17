@@ -17,11 +17,6 @@ from src.models import PolarisModel, create_repr_model, create_proj_model
 from src.utils import PerformanceTracker, scaffold_split, make_combinations_improved, save_dict_to_csv
 
 
-def worker(params, queue):
-    polaris = Polaris(params, queue)
-    polaris.run()
-
-
 class PolarisDispatcher:
     def __init__(self, params: dict) -> None:
         self.params = params
@@ -31,16 +26,13 @@ class PolarisDispatcher:
             queue = manager.Queue()
 
             # TODO Fix these conversions
-            # params_list: list[dict] = make_combinations_improved(self.params, ("out_channels", "latent_dim"))
-            params_list: list[dict] = make_combinations_improved(self.params, ("fpSize", "latent_dim"))
+            params_list: list[dict] = make_combinations_improved(self.params, ("out_channels", "latent_dim"))
+            # params_list: list[dict] = make_combinations_improved(self.params, ("fpSize", "latent_dim"))
 
             print(f"Total param count: {len(params_list)}")
             with ProcessPoolExecutor(max_workers=8) as executor:
                 for params in params_list:
-                    # polaris = Polaris(params, queue)
-                    # executor.submit(polaris.run)
-
-                    executor.submit(worker,params, queue)
+                    executor.submit(self.worker, params, queue)
 
                 executor.shutdown()
 
@@ -51,6 +43,11 @@ class PolarisDispatcher:
             results_path: Path = Path(".") / "results" / f"potency_{self.params['repr_model'].lower()}_results.csv"
             results_path.parent.mkdir(parents=True, exist_ok=True)
             save_dict_to_csv(result, results_path)
+
+    @staticmethod
+    def worker(params, queue):
+        polaris = Polaris(params, queue)
+        polaris.run()
 
     @staticmethod
     def train_single(params: dict) -> float:
