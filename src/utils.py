@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pandas as pd
 import yaml
+import csv
 from matplotlib import pyplot as plt
 from rdkit import Chem
 from rdkit.Chem.Scaffolds import MurckoScaffold
@@ -135,6 +136,45 @@ def load_yaml_to_dict(config_filename: str) -> dict:
     return config
 
 
+def make_combinations_improved(dictionary: dict, coupled_keys: tuple[str, str] = None) -> list[dict]:
+    # Start with an empty combination
+    combinations = [{}]
+
+    # Handle regular (non-coupled) keys
+    for key, value in dictionary.items():
+        # Skip coupled keys as they're handled separately
+        if coupled_keys and key in coupled_keys:
+            continue
+
+        # Convert single values to lists for consistent handling
+        values = [value] if not isinstance(value, list) else value
+
+        # Create new combinations with each value
+        combinations = [
+            {**existing, key: new_value}
+            for existing in combinations
+            for new_value in values
+        ]
+
+    # Handle coupled keys if provided
+    if coupled_keys and all(k in dictionary for k in coupled_keys):
+        key1, key2 = coupled_keys
+        # Get values for both keys
+        vals1 = dictionary[key1] if isinstance(dictionary[key1], list) else [dictionary[key1]]
+        vals2 = dictionary[key2] if isinstance(dictionary[key2], list) else [dictionary[key2]]
+        # Pair the values
+        paired_values = list(zip(vals1, vals2))
+
+        # Add coupled values to all combinations
+        combinations = [
+            {**existing, key1: val1, key2: val2}
+            for existing in combinations
+            for val1, val2 in paired_values
+        ]
+
+    return combinations
+
+
 def make_combinations(dictionary: dict, exclude_key: str = None) -> list[dict]:
     # Start with first key-value pair
     result = [{}]
@@ -156,3 +196,11 @@ def make_combinations(dictionary: dict, exclude_key: str = None) -> list[dict]:
             result = new_result
 
     return result
+
+
+def save_dict_to_csv(data: list[dict], output_path: Path):
+    with open(output_path, "w", newline="") as file:
+        fieldnames = data[0].keys()
+        writer = csv.DictWriter(file, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(data)
