@@ -10,7 +10,6 @@ from src.utils import load_yaml_to_dict
 def main(args: dict) -> None:
     config_filename = args["config_filename"]
     params: dict = load_yaml_to_dict(config_filename)
-    print(params)
 
     polaris_dispatcher = PolarisDispatcher(params)
     polaris_dispatcher.run()

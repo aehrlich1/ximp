@@ -13,7 +13,7 @@ from tqdm import tqdm
 
 from src.data import PotencyDataset
 from src.models import PolarisModel, create_repr_model, create_proj_model
-from src.utils import PerformanceTracker, scaffold_split, make_combinations_improved, save_dict_to_csv
+from src.utils import PerformanceTracker, scaffold_split, make_combinations, save_dict_to_csv
 
 
 class PolarisDispatcher:
@@ -24,9 +24,7 @@ class PolarisDispatcher:
         with Manager() as manager:
             queue = manager.Queue()
 
-            # TODO Fix these conversions
-            params_list: list[dict] = make_combinations_improved(self.params, ("out_channels", "latent_dim"))
-            # params_list: list[dict] = make_combinations_improved(self.params, ("fpSize", "latent_dim"))
+            params_list: list[dict] = make_combinations(self.params)
 
             print(f"Total param count: {len(params_list)}")
             print(f"Using device: {'cuda:0' if torch.cuda.is_available() else 'cpu'}")
@@ -132,7 +130,6 @@ class Polaris:
 
     def _init_device(self):
         self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
-        print(f"Using device: {self.device}")
 
     def _init_model(self):
         repr_model = create_repr_model(self.params)

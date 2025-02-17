@@ -21,7 +21,7 @@ def create_repr_model(params: dict) -> nn.Module:
                 inter_message_passing=params['inter_message_passing'],
             )
         case "ECFP":
-            repr_model = ECFPModel(radius=params['radius'], fpSize=params['latent_dim'])
+            repr_model = ECFPModel(radius=params['radius'], fpSize=params['out_channels'])
         case "GIN":
             repr_model = GINModel(
                 in_channels=params['in_channels'],
@@ -45,7 +45,7 @@ def create_repr_model(params: dict) -> nn.Module:
 
 
 def create_proj_model(params: dict, hidden_dim: int = 64) -> nn.Module:
-    return ProjectionHead(in_dim=params["latent_dim"], out_dim=params["out_dim"], hidden_dim=hidden_dim)
+    return ProjectionHead(in_dim=params["out_channels"], out_dim=params["out_dim"], hidden_dim=hidden_dim)
 
 
 class PolarisModel(nn.Module):

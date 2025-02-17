@@ -15,10 +15,10 @@ scaffold_split_val_sz : 0.1
 repr_model: "GIN"
 in_channels: 9
 hidden_channels: 64
-out_channels: &out_channels [64, 128]
+out_channels: [64, 128]
 num_layers: 3
 dropout: 0.01
 
 # Projection head model params
-latent_dim: *out_channels
+# latent_dim: *out_channels
 out_dim: 1
