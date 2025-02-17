@@ -4,7 +4,6 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import polaris as po
 import torch
 from sklearn.model_selection import StratifiedKFold
 from torch import nn
@@ -30,6 +29,7 @@ class PolarisDispatcher:
             # params_list: list[dict] = make_combinations_improved(self.params, ("fpSize", "latent_dim"))
 
             print(f"Total param count: {len(params_list)}")
+            print(f"Using device: {'cuda:0' if torch.cuda.is_available() else 'cpu'}")
             with ProcessPoolExecutor(max_workers=8) as executor:
                 for params in params_list:
                     executor.submit(self.worker, params, queue)
@@ -82,7 +82,6 @@ class Polaris:
 
     def _init(self):
         self._init_device()
-        # self._init_competition()
         self._init_dataset()
         self._init_model()
         self._init_optimizer()
@@ -133,9 +132,6 @@ class Polaris:
     def _init_device(self):
         self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
         print(f"Using device: {self.device}")
-
-    def _init_competition(self):
-        self.competition = po.load_competition(f"asap-discovery/antiviral-{self.params["task"]}-2025")
 
     def _init_model(self):
         repr_model = create_repr_model(self.params)
