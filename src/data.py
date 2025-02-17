@@ -2,6 +2,7 @@
 This file will take care of all data related aspects.
 """
 import csv
+import warnings
 
 import torch
 from torch_geometric.data import Data, InMemoryDataset
@@ -9,10 +10,14 @@ from torch_geometric.utils import from_smiles
 
 from src.utils import scaffold_split
 
+# Ignore FutureWarnings from torch.load about weightsOnly bool != True
+warnings.simplefilter("ignore", category=FutureWarning)
+
 
 class PotencyDataset(InMemoryDataset):
-    def __init__(self, root, train=True, target_col=1, force_reload=False):
-        self.target_col = target_col
+    def __init__(self, root, train=True, target_task: str="pIC50 (MERS-CoV Mpro)", force_reload=False):
+        self.target_task = target_task
+        self.target_col = self._admet_target_to_col_mapping(target_task)
         super().__init__(root, force_reload=force_reload)
         self.load(self.processed_paths[0] if train else self.processed_paths[1])
 
@@ -59,9 +64,18 @@ class PotencyDataset(InMemoryDataset):
 
         self.save(data_list, self.processed_paths[1])
 
+    @staticmethod
+    def _admet_target_to_col_mapping(target_task: str) -> int:
+        if target_task == "pIC50 (MERS-CoV Mpro)":
+            return 1
+        elif target_task == "pIC50 (SARS-CoV-2 Mpro)":
+            return 2
+        else:
+            raise ValueError(f"Unknown target task: {target_task}")
+
 
 if __name__ == "__main__":
-    dataset = PotencyDataset(root="../data/polaris/potency", train=True, target_col=1)
+    dataset = PotencyDataset(root="../data/polaris/potency", train=True)
     train_dataset, test_dataset = scaffold_split(dataset)
     print(len(train_dataset), len(test_dataset))
     print(dataset)
