@@ -38,8 +38,13 @@ class PolarisDispatcher:
             while not queue.empty():
                 result.append(queue.get())
 
+            if isinstance(self.params['repr_model'], list):
+                name = 'gnn'
+            else:
+                name = self.params['repr_model'].lower()
+
             results_path: Path = Path(
-                ".") / "results" / f"{self.params["task"]}_{self.params['repr_model'].lower()}_results.csv"
+                ".") / "results" / f"{self.params["task"]}_{name}_results.csv"
             results_path.parent.mkdir(parents=True, exist_ok=True)
             save_dict_to_csv(result, results_path)
 
@@ -114,6 +119,8 @@ class Polaris:
         print(f"Average validation loss: {np.mean(val_loss_list)}")
 
         self.params.update({"mean_val_loss": np.mean(val_loss_list)})
+        self.params.update({"patience": self.performance_tracker.patience})
+        self.params.update({"final_epochs": self.performance_tracker.epoch[-1]})
 
         if self.queue is not None:
             self.queue.put(self.params)

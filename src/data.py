@@ -15,9 +15,17 @@ warnings.simplefilter("ignore", category=FutureWarning)
 
 
 class PotencyDataset(InMemoryDataset):
-    def __init__(self, root, target_task, train=True, force_reload=False):
+    def __init__(self, root, task: str, target_task: str, train=True, force_reload=False):
         self.target_task = target_task
-        self.target_col = self._admet_target_to_col_mapping(target_task)
+        self.train = train
+
+        if task == "admet":
+            self.target_col = self._admet_target_to_col_mapping(target_task)
+        elif task == "potency":
+            self.target_col = self._potency_target_to_col_mapping(target_task)
+        else:
+            raise ValueError(f"Unknown task: {task}")
+
         super().__init__(root, force_reload=force_reload)
         self.load(self.processed_paths[0] if train else self.processed_paths[1])
 
@@ -66,16 +74,33 @@ class PotencyDataset(InMemoryDataset):
 
     @staticmethod
     def _admet_target_to_col_mapping(target_task: str) -> int:
-        if target_task == "pIC50 (MERS-CoV Mpro)":
-            return 1
-        elif target_task == "pIC50 (SARS-CoV-2 Mpro)":
-            return 2
-        else:
-            raise ValueError(f"Unknown target task: {target_task}")
+        match target_task:
+            case "MLM":
+                return 1
+            case "HLM":
+                return 2
+            case "KSOL":
+                return 3
+            case "LogD":
+                return 4
+            case "MDR1-MDCKII":
+                return 5
+            case _:
+                raise ValueError(f'Unknown target task: {target_task}')
+
+    @staticmethod
+    def _potency_target_to_col_mapping(target_task: str) -> int:
+        match target_task:
+            case "pIC50 (MERS-CoV Mpro)":
+                return 1
+            case "pIC50 (SARS-CoV-2 Mpro)":
+                return 2
+            case _:
+                raise ValueError(f'Unknown target task: {target_task}')
 
 
 if __name__ == "__main__":
-    dataset = PotencyDataset(root="../data/polaris/potency", train=True)
+    dataset = PotencyDataset(root="../data/polaris/admet", task="admet", target_task="MDR1-MDCKII", train=True)
     train_dataset, test_dataset = scaffold_split(dataset)
     print(len(train_dataset), len(test_dataset))
     print(dataset)
