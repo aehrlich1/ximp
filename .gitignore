@@ -13,7 +13,7 @@ models/
 __pycache__
 
 # Ignore the processed dataset files
-/data/polars/admet/processed
+/data/polaris/admet/processed
 /data/polaris/potency/processed
 
 results/
