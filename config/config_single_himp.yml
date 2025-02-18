@@ -14,11 +14,11 @@ scaffold_split_val_sz : 0.1
 # Representation model params
 repr_model: "HIMP"
 hidden_channels: 9
-out_channels: &out_channels 32
+out_channels: 32
 num_layers: 1
 dropout: 0.1
 inter_message_passing: True
 
 # Projection head model params
-latent_dim: *out_channels
+# latent_dim: *out_channels
 out_dim: 1
