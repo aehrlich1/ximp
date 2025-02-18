@@ -6,12 +6,16 @@ from torch import nn
 from rdkit import Chem
 from rdkit.Chem import AllChem
 from torch_geometric.nn import global_add_pool
-from torch_geometric.nn import GIN
+from torch_geometric.nn import GIN, GAT, GCN, GraphSAGE
 from src.himp import HimpModel
 
 
 def create_repr_model(params: dict) -> nn.Module:
     match params['repr_model']:
+        case "ECFP":
+            repr_model = ECFPModel(
+                radius=params['radius'],
+                fpSize=params['out_channels'])
         case "HIMP":
             repr_model = HimpModel(
                 hidden_channels=params['hidden_channels'],
@@ -20,8 +24,6 @@ def create_repr_model(params: dict) -> nn.Module:
                 dropout=params['dropout'],
                 inter_message_passing=params['inter_message_passing'],
             )
-        case "ECFP":
-            repr_model = ECFPModel(radius=params['radius'], fpSize=params['out_channels'])
         case "GIN":
             repr_model = GINModel(
                 in_channels=params['in_channels'],
@@ -38,14 +40,31 @@ def create_repr_model(params: dict) -> nn.Module:
                 num_layers=params['num_layers'],
                 dropout=params['dropout'],
             )
+        case "GAT":
+            repr_model = GATModel(
+                in_channels=params['in_channels'],
+                hidden_channels=params['hidden_channels'],
+                out_channels=params['out_channels'],
+                num_layers=params['num_layers'],
+                dropout=params['dropout'],
+            )
+        case "GraphSAGE":
+            repr_model = GraphSAGEModel(
+                in_channels=params['in_channels'],
+                hidden_channels=params['hidden_channels'],
+                out_channels=params['out_channels'],
+                num_layers=params['num_layers'],
+                dropout=params['dropout'],
+            )
         case _:
             raise NotImplementedError
 
     return repr_model
 
 
-def create_proj_model(params: dict, hidden_dim: int = 64) -> nn.Module:
-    return ProjectionHead(in_dim=params["out_channels"], out_dim=params["out_dim"], hidden_dim=hidden_dim)
+def create_proj_model(params: dict) -> nn.Module:
+    return ProjectionHead(in_dim=params["out_channels"], out_dim=params["out_dim"],
+                          hidden_dim=params['proj_hidden_dim'])
 
 
 class PolarisModel(nn.Module):
@@ -79,12 +98,46 @@ class GINModel(nn.Module):
 class GCNModel(nn.Module):
     def __init__(self, in_channels: int, hidden_channels: int, out_channels: int, num_layers: int, dropout: float):
         super().__init__()
-        self.model = GIN(in_channels=in_channels, hidden_channels=hidden_channels, out_channels=out_channels,
+        self.model = GCN(in_channels=in_channels, hidden_channels=hidden_channels, out_channels=out_channels,
                          num_layers=num_layers, dropout=dropout)
         self.pool = global_add_pool
 
     def forward(self, data):
         x, edge_index, edge_attr = data.x, data.edge_index, data.edge_attr
+        # TODO: Hack, use one-hot encoding or embeddings
+        x = x.float()
+        h = self.model(x=x, edge_index=edge_index, edge_attr=edge_attr)
+        h_G = self.pool(x=h, batch=data.batch)
+
+        return h_G
+
+
+class GATModel(nn.Module):
+    def __init__(self, in_channels: int, hidden_channels: int, out_channels: int, num_layers: int, dropout: float):
+        super().__init__()
+        self.model = GAT(in_channels=in_channels, hidden_channels=hidden_channels, out_channels=out_channels,
+                         num_layers=num_layers, dropout=dropout)
+        self.pool = global_add_pool
+
+    def forward(self, data):
+        x, edge_index, edge_attr = data.x, data.edge_index, data.edge_attr
+        x = x.float()
+        h = self.model(x=x, edge_index=edge_index, edge_attr=edge_attr)
+        h_G = self.pool(x=h, batch=data.batch)
+
+        return h_G
+
+
+class GraphSAGEModel(nn.Module):
+    def __init__(self, in_channels: int, hidden_channels: int, out_channels: int, num_layers: int, dropout: float):
+        super().__init__()
+        self.model = GraphSAGE(in_channels=in_channels, hidden_channels=hidden_channels, out_channels=out_channels,
+                               num_layers=num_layers, dropout=dropout)
+        self.pool = global_add_pool
+
+    def forward(self, data):
+        x, edge_index, edge_attr = data.x, data.edge_index, data.edge_attr
+        x = x.float()
         h = self.model(x=x, edge_index=edge_index, edge_attr=edge_attr)
         h_G = self.pool(x=h, batch=data.batch)
 
@@ -92,7 +145,7 @@ class GCNModel(nn.Module):
 
 
 class ECFPModel(nn.Module):
-    def __init__(self, radius=2, fpSize=1024):
+    def __init__(self, radius: int, fpSize: int):
         super().__init__()
         self.fpgen = AllChem.GetMorganGenerator(radius=radius, fpSize=fpSize)
 
@@ -103,7 +156,7 @@ class ECFPModel(nn.Module):
 
 
 class ProjectionHead(nn.Module):
-    def __init__(self, in_dim, out_dim, hidden_dim=64):
+    def __init__(self, in_dim, out_dim, hidden_dim):
         super().__init__()
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.projection = nn.Sequential(
