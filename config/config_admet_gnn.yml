@@ -1,0 +1,25 @@
+task: "admet"
+target_task: ["MLM", "HLM", "KSOL", "LogD", "MDR1-MDCKII"]
+
+# Learning params
+batch_size: [32]
+epochs: 150
+lr: [1.0e-3]
+
+# Cross validation params
+num_cv_folds: 5
+num_cv_bins: 10
+scaffold_split_val_sz : 0.1
+
+# Representation model params
+repr_model: ["GIN"]
+in_channels: 9
+hidden_channels: 64
+out_channels: [64]
+num_layers: 3
+dropout: 0.01
+
+# Projection head model params
+# latent_dim: *out_channels
+proj_hidden_dim: [64]
+out_dim: 1

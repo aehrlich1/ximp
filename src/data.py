@@ -14,7 +14,7 @@ from src.utils import scaffold_split
 warnings.simplefilter("ignore", category=FutureWarning)
 
 
-class PotencyDataset(InMemoryDataset):
+class PolarisDataset(InMemoryDataset):
     def __init__(self, root, task: str, target_task: str, train=True, force_reload=False):
         self.target_task = target_task
         self.train = train
@@ -100,7 +100,7 @@ class PotencyDataset(InMemoryDataset):
 
 
 if __name__ == "__main__":
-    dataset = PotencyDataset(root="../data/polaris/admet", task="admet", target_task="MDR1-MDCKII", train=True)
-    train_dataset, test_dataset = scaffold_split(dataset)
-    print(len(train_dataset), len(test_dataset))
+    dataset = PolarisDataset(root="../data/polaris/admet", task="admet", target_task="MDR1-MDCKII", train=True)
+    train_dataset, valid_dataset = scaffold_split(dataset)
+    print(len(train_dataset), len(valid_dataset))
     print(dataset)

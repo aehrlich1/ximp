@@ -12,7 +12,7 @@ num_cv_bins: 10
 scaffold_split_val_sz : 0.1
 
 # Representation model params
-repr_model: ["GIN", "GAT", "GCN", "GraphSAGE"]
+repr_model: ["GIN"] #, "GAT", "GCN", "GraphSAGE"]
 in_channels: 9
 hidden_channels: [32, 64]
 out_channels: [64, 128]

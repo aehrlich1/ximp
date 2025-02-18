@@ -11,7 +11,7 @@ from torch.optim import Adam
 from torch_geometric.loader import DataLoader
 from tqdm import tqdm
 
-from src.data import PotencyDataset
+from src.data import PolarisDataset
 from src.models import PolarisModel, create_repr_model, create_proj_model
 from src.utils import PerformanceTracker, scaffold_split, make_combinations, save_dict_to_csv
 
@@ -152,8 +152,10 @@ class Polaris:
     def _init_dataset(self):
         root = Path(f"./data") / "polaris" / self.params["task"]
 
-        self.train_polaris = PotencyDataset(root=root, train=True, target_task=self.params["target_task"])
-        self.test_polaris = PotencyDataset(root=root, train=False, target_task=self.params["target_task"])
+        self.train_polaris = PolarisDataset(root=root, task=self.params["task"], target_task=self.params["target_task"],
+                                            train=True, )
+        self.test_polaris = PolarisDataset(root=root, task=self.params["task"], target_task=self.params["target_task"],
+                                           train=False, )
 
         self.train_scaffold, self.test_scaffold = scaffold_split(dataset=self.train_polaris,
                                                                  test_size=self.params["scaffold_split_val_sz"])
