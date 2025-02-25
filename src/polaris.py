@@ -124,7 +124,7 @@ class Polaris:
         self.optimizer = Adam(self.model.parameters(), lr=self.params["lr"])
 
     def _init_dataset(self):
-        root = Path(f"./data") / "polaris" / self.params["task"]
+        root = Path("./data") / "polaris" / self.params["task"]
 
         log_transform = True if self.params["task"] == "admet" else False
 
