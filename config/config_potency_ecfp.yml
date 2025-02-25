@@ -1,6 +1,5 @@
-task: "admet"
-target_task: ["MLM", "HLM", "KSOL", "LogD", "MDR1-MDCKII"]
-
+task: "potency"
+target_task: ["pIC50 (MERS-CoV Mpro)" , "pIC50 (SARS-CoV-2 Mpro)"]
 
 # Learning params
 batch_size: [32]
@@ -13,12 +12,9 @@ num_cv_bins: 10
 scaffold_split_val_sz : 0.1
 
 # Representation model params
-repr_model: ["GIN", "GCN", "GAT", "GraphSAGE"]
-in_channels: 9
-hidden_channels: [32, 64]
-out_channels: [64, 128]
-num_layers: [3]
-dropout: [0.1]
+repr_model: "ECFP"
+radius: [2, 3]
+out_channels: [1024, 2048]
 
 # Projection head model params
 # latent_dim: *out_channels

@@ -15,9 +15,10 @@ warnings.simplefilter("ignore", category=FutureWarning)
 
 
 class PolarisDataset(InMemoryDataset):
-    def __init__(self, root, task: str, target_task: str, train=True, force_reload=False):
+    def __init__(self, root, task: str, target_task: str, train=True, force_reload=False, log_transform=False):
         self.target_task = target_task
         self.train = train
+        self.log_transform = log_transform
 
         if task == "admet":
             self.target_col = self._admet_target_to_col_mapping(target_task)
@@ -53,6 +54,12 @@ class PolarisDataset(InMemoryDataset):
                     continue
 
                 y = torch.tensor(float(label), dtype=torch.float).view(-1, 1)
+
+                if self.log_transform and self.target_task != "LogD":
+                    y = torch.log(y)
+                    if y.isinf():
+                        y = torch.zeros_like(y)
+
                 data = from_smiles(smiles)
                 data.y = y
                 data_list.append(data)

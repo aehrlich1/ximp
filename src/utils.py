@@ -55,6 +55,7 @@ class PerformanceTracker:
         self.tracking_dir: Path = tracking_dir
         self.id_run = id_run
         self.epoch = []
+        self.early_stop_epoch = []
         self.train_loss = []
         self.valid_loss = []
         self.test_pred = {}
@@ -65,7 +66,6 @@ class PerformanceTracker:
         self.early_stop = False
 
     def reset(self):
-        # Resets state, required for use in CV
         self.epoch = []
         self.train_loss = []
         self.valid_loss = []

@@ -7,7 +7,6 @@ from rdkit import Chem
 from rdkit.Chem import AllChem
 from torch_geometric.nn import global_add_pool
 from torch_geometric.nn import GIN, GAT, GCN, GraphSAGE
-from src.himp import HimpModel
 
 
 def create_repr_model(params: dict) -> nn.Module:
@@ -16,14 +15,6 @@ def create_repr_model(params: dict) -> nn.Module:
             repr_model = ECFPModel(
                 radius=params['radius'],
                 fpSize=params['out_channels'])
-        case "HIMP":
-            repr_model = HimpModel(
-                hidden_channels=params['hidden_channels'],
-                out_channels=params['out_channels'],
-                num_layers=params['num_layers'],
-                dropout=params['dropout'],
-                inter_message_passing=params['inter_message_passing'],
-            )
         case "GIN":
             repr_model = GINModel(
                 in_channels=params['in_channels'],
@@ -72,12 +63,11 @@ class PolarisModel(nn.Module):
         super().__init__()
         self.repr_model = repr_model
         self.proj_model = proj_model
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     def forward(self, data):
         h = self.repr_model(data)
         z = self.proj_model(h)
-        return z.to(self.device)
+        return z
 
 
 class GINModel(nn.Module):
@@ -158,14 +148,13 @@ class ECFPModel(nn.Module):
 class ProjectionHead(nn.Module):
     def __init__(self, in_dim, out_dim, hidden_dim):
         super().__init__()
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.projection = nn.Sequential(
             nn.Linear(in_dim, hidden_dim),
             nn.ReLU(),
             nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
             nn.Linear(hidden_dim, out_dim),
-        ).to(self.device)
+        )
 
     def forward(self, data):
-        return self.projection(data.to(self.device))
+        return self.projection(data)
