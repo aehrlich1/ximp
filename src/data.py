@@ -15,7 +15,7 @@ warnings.simplefilter("ignore", category=FutureWarning)
 
 
 class PolarisDataset(InMemoryDataset):
-    def __init__(self, root, task: str, target_task: str, train=True, force_reload=False, log_transform=False):
+    def __init__(self, root, task: str, target_task: str, train=True, force_reload=True, log_transform=True):
         self.target_task = target_task
         self.train = train
         self.log_transform = log_transform
@@ -27,7 +27,7 @@ class PolarisDataset(InMemoryDataset):
         else:
             raise ValueError(f"Unknown task: {task}")
 
-        super().__init__(root, force_reload=force_reload)
+        super().__init__(root, force_reload=True)
         self.load(self.processed_paths[0] if train else self.processed_paths[1])
 
     @property
@@ -56,7 +56,7 @@ class PolarisDataset(InMemoryDataset):
                 y = torch.tensor(float(label), dtype=torch.float).view(-1, 1)
 
                 if self.log_transform and self.target_task != "LogD":
-                    y = torch.log(y)
+                    y = torch.log10(y)
                     if y.isinf():
                         y = torch.zeros_like(y)
 
