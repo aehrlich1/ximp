@@ -9,7 +9,6 @@ from torch import nn
 from torch.optim import Adam
 from torch_geometric.loader import DataLoader
 from tqdm import tqdm
-from sklearn.metrics import mean_absolute_error
 
 from src.data import PolarisDataset
 from src.models import PolarisModel, create_repr_model, create_proj_model
@@ -101,6 +100,7 @@ class Polaris:
                 self.performance_tracker.log({"early_stop_epoch": epoch})
                 break
 
+
     def train_final(self, train_dataset) -> None:
         train_dataloader = DataLoader(
             train_dataset, batch_size=self.params["batch_size"], shuffle=True
@@ -180,7 +180,11 @@ class Polaris:
         average_loss = epoch_loss / len(dataloader)
         self.performance_tracker.log({"valid_loss": average_loss})
 
-    def predict(self, dataset) -> dict[str, float]:
+    def predict(self, dataset) -> list[tuple]:
+        """
+        Return a list, where each element is a tuple with the first element being the
+        smiles string, and the second being the predicted value.
+        """
         self.model.eval()
         smiles = dataset.smiles
 
@@ -192,7 +196,7 @@ class Polaris:
 
         pred = [p.item() for p in pred]
 
-        return dict(zip(smiles, pred))
+        return list(zip(smiles, pred))
 
 
 class PolarisDispatcher:
@@ -232,33 +236,3 @@ class PolarisDispatcher:
         polaris = Polaris(params, queue)
         polaris.run()
 
-    @staticmethod
-    def train(params: dict) -> Polaris:
-        """
-        Take parameters and train on train_scaffold.
-        """
-        polaris = Polaris(params)
-        polaris.train_final(polaris.train_scaffold)
-
-        return polaris
-
-    @staticmethod
-    def predict(polaris: Polaris) -> dict[str, float]:
-        """
-        Take parameters and train on train_scaffold.
-        """
-        predictions = polaris.predict(polaris.test_scaffold)
-
-        return predictions
-
-    @staticmethod
-    def train_and_predict(params: dict) -> (dict[str, float], float):
-        """
-        Take best parameters and train on train_scaffold.
-        Perform inference on test_scaffold.
-        """
-        polaris = PolarisDispatcher.train(params)
-        predictions = PolarisDispatcher.predict(polaris)
-        mae = mean_absolute_error(list(predictions.values()), polaris.test_scaffold.y)
-
-        return predictions, mae
