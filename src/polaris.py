@@ -118,7 +118,7 @@ class Polaris:
         self.model = PolarisModel(repr_model, proj_model)
 
     def _init_loss_fn(self):
-        self.loss_fn = nn.MSELoss()
+        self.loss_fn = nn.L1Loss()
 
     def _init_optimizer(self):
         self.optimizer = Adam(self.model.parameters(), lr=self.params["lr"])
