@@ -81,8 +81,7 @@ class Polaris:
         self.params.update(
             {
                 "final_avg_epochs": round(
-                    # np.mean(self.performance_tracker.early_stop_epoch)
-                    2
+                    np.mean(self.performance_tracker.early_stop_epoch)
                 )
             }
         )
