@@ -121,7 +121,11 @@ class Polaris:
         self.loss_fn = nn.L1Loss()
 
     def _init_optimizer(self):
-        self.optimizer = Adam(self.model.parameters(), lr=self.params["lr"])
+        self.optimizer = Adam(
+            self.model.parameters(),
+            lr=self.params["lr"],
+            weight_decay=self.params["weight_decay"],
+        )
 
     def _init_dataset(self):
         root = Path("./data") / "polaris" / self.params["task"]
