@@ -5,6 +5,7 @@ target_task: ["MLM", "HLM", "KSOL", "LogD", "MDR1-MDCKII"]
 batch_size: [32]
 epochs: 500
 lr: [1.0e-3]
+weight_decay: [0.0, 1.0e-4, 1.0e-2]
 
 # Cross validation params
 num_cv_folds: 5
