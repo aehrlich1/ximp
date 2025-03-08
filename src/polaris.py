@@ -1,4 +1,4 @@
-from multiprocessing import Manager
+from torch.multiprocessing import Manager, Pool
 from pathlib import Path
 
 import numpy as np
@@ -81,7 +81,8 @@ class Polaris:
         self.params.update(
             {
                 "final_avg_epochs": round(
-                    np.mean(self.performance_tracker.early_stop_epoch)
+                    # np.mean(self.performance_tracker.early_stop_epoch)
+                    2
                 )
             }
         )
@@ -211,10 +212,14 @@ class PolarisDispatcher:
             params_list: list[dict] = make_combinations(self.params)
 
             print(f"Total param count: {len(params_list)}")
-            print(f"Using device: {'cuda:0' if torch.cuda.is_available() else 'cpu'}")
+            print("Using device: cpu")
 
-            for params in params_list:
-                self.worker(params, queue)
+    
+            with Pool(processes = 8) as pool:
+                for params in params_list:
+                    pool.apply_async(self.worker, (params, queue,), error_callback=lambda e: print(e))
+                pool.close()
+                pool.join()
 
             result = []
             while not queue.empty():
@@ -233,6 +238,7 @@ class PolarisDispatcher:
 
     @staticmethod
     def worker(params, queue):
+        torch.set_num_threads(1)
         polaris = Polaris(params, queue)
         polaris.run()
 

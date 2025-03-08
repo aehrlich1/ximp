@@ -8,6 +8,8 @@ from rdkit.Chem import AllChem
 from torch_geometric.nn import global_add_pool
 from torch_geometric.nn import GIN, GAT, GCN, GraphSAGE
 
+from src.himp import Himp
+
 
 def create_repr_model(params: dict) -> nn.Module:
     match params['repr_model']:
@@ -41,6 +43,14 @@ def create_repr_model(params: dict) -> nn.Module:
             )
         case "GraphSAGE":
             repr_model = GraphSAGEModel(
+                in_channels=params['in_channels'],
+                hidden_channels=params['hidden_channels'],
+                out_channels=params['out_channels'],
+                num_layers=params['num_layers'],
+                dropout=params['dropout'],
+            )
+        case "HIMP":
+            repr_model = HIMPModel(
                 in_channels=params['in_channels'],
                 hidden_channels=params['hidden_channels'],
                 out_channels=params['out_channels'],
@@ -132,6 +142,15 @@ class GraphSAGEModel(nn.Module):
         h_G = self.pool(x=h, batch=data.batch)
 
         return h_G
+
+
+class HIMPModel(nn.Module):
+    def __init__(self, in_channels: int, hidden_channels: int, out_channels: int, num_layers: int, dropout: float):
+        super().__init__()
+        self.model = Himp(hidden_channels=hidden_channels, out_channels=out_channels, num_layers=num_layers, dropout=dropout)
+
+    def forward(self, data):
+        return self.model(data)
 
 
 class ECFPModel(nn.Module):

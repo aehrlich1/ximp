@@ -36,7 +36,7 @@ class BondEncoder(torch.nn.Module):
         self.embeddings = torch.nn.ModuleList()
 
         for i in range(3):
-            self.embeddings.append(Embedding(6, hidden_channels))
+            self.embeddings.append(Embedding(100, hidden_channels))
 
     def reset_parameters(self):
         for embedding in self.embeddings:
@@ -52,10 +52,10 @@ class BondEncoder(torch.nn.Module):
         return out
 
 
-class HimpModel(torch.nn.Module):
+class Himp(torch.nn.Module):
     def __init__(self, hidden_channels, out_channels, num_layers, dropout=0.0,
                  inter_message_passing=True):
-        super(HimpModel, self).__init__()
+        super(Himp, self).__init__()
         self.num_layers = num_layers
         self.dropout = dropout
         self.inter_message_passing = inter_message_passing

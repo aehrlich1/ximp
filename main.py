@@ -2,6 +2,7 @@
 This file will serve as the main entry point for the application.
 """
 import argparse
+import torch.multiprocessing as mp
 
 from src.polaris import PolarisDispatcher
 from src.utils import load_yaml_to_dict
@@ -16,6 +17,8 @@ def main(args: dict) -> None:
 
 
 if __name__ == '__main__':
+    mp.set_start_method("spawn", force=True)
+
     parser = argparse.ArgumentParser(description="Pass in the config file.")
     parser.add_argument("--config_filename", help="Name of the config file in the config directory.")
 

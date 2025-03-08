@@ -8,6 +8,7 @@ import torch
 from torch_geometric.data import Data, InMemoryDataset
 from torch_geometric.utils import from_smiles
 
+from src.transform import JunctionTree
 from src.utils import scaffold_split
 
 # Ignore FutureWarnings from torch.load about weightsOnly bool != True
@@ -19,6 +20,7 @@ class PolarisDataset(InMemoryDataset):
         self.target_task = target_task
         self.train = train
         self.log_transform = log_transform
+        self.junctionTree = JunctionTree()
 
         if task == "admet":
             self.target_col = self._admet_target_to_col_mapping(target_task)
@@ -27,7 +29,7 @@ class PolarisDataset(InMemoryDataset):
         else:
             raise ValueError(f"Unknown task: {task}")
 
-        super().__init__(root, force_reload=True)
+        super().__init__(root, force_reload=False)
         self.load(self.processed_paths[0] if train else self.processed_paths[1])
 
     @property
@@ -62,6 +64,9 @@ class PolarisDataset(InMemoryDataset):
 
                 data = from_smiles(smiles)
                 data.y = y
+
+                data = self.junctionTree(data)
+
                 data_list.append(data)
 
         self.save(data_list, self.processed_paths[0])
