@@ -1,11 +1,12 @@
 # Based on: https://github.com/rusty1s/himp-gnn/blob/master/transform.py
+import torch
 from rdkit import Chem
 from rdkit.Chem.rdchem import BondType
-import torch
 from torch_geometric.data import Data
 from torch_geometric.utils import tree_decomposition
 
 bonds = [bond for bond in BondType.__dict__.values() if isinstance(bond, BondType)]
+
 
 def mol_from_data(data):
     mol = Chem.RWMol()
@@ -23,8 +24,7 @@ def mol_from_data(data):
     bond_type = bond_type[mask].tolist()
 
     for i, j, bond in zip(row, col, bond_type):
-
-        #assert bond >= 1 and bond <= 4
+        # assert bond >= 1 and bond <= 4
         mol.AddBond(i, j, bonds[bond - 1])
 
     return mol.GetMol()
@@ -32,9 +32,9 @@ def mol_from_data(data):
 
 class JunctionTreeData(Data):
     def __inc__(self, key, item, *args):
-        if key == 'tree_edge_index':
+        if key == "tree_edge_index":
             return self.x_clique.size(0)
-        elif key == 'atom2clique_index':
+        elif key == "atom2clique_index":
             return torch.tensor([[self.x.size(0)], [self.x_clique.size(0)]])
         else:
             return super(JunctionTreeData, self).__inc__(key, item, *args)
@@ -54,6 +54,7 @@ class JunctionTree(object):
         data.x_clique = x_clique
 
         return data
+
 
 class OGBTransform(object):
     # OGB saves atom and bond types zero-index based. We need to revert that.

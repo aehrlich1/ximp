@@ -1,67 +1,66 @@
 """
 This file will contain all of our models.
 """
-import torch
+
 import sys
-from torch import nn
+
+import torch
+import torch_geometric.utils.smiles as pyg_smiles
 from rdkit import Chem
 from rdkit.Chem import AllChem
-from torch_geometric.nn import global_add_pool
-from torch_geometric.nn import GIN, GAT, GCN, GraphSAGE
-import torch_geometric.utils.smiles as pyg_smiles
+from torch import nn
+from torch_geometric.nn import GAT, GCN, GIN, GraphSAGE, global_add_pool
 
 from src.himp import Himp
 
 
 def create_repr_model(params: dict) -> nn.Module:
-    match params['repr_model']:
+    match params["repr_model"]:
         case "ECFP":
-            repr_model = ECFPModel(
-                radius=params['radius'],
-                fpSize=params['out_channels'])
+            repr_model = ECFPModel(radius=params["radius"], fpSize=params["out_channels"])
         case "GIN":
             repr_model = GINModel(
-                in_channels=params['in_channels'],
-                hidden_channels=params['hidden_channels'],
-                out_channels=params['out_channels'],
-                num_layers=params['num_layers'],
-                dropout=params['dropout'],
-                encoding_dim=params['encoding_dim']
+                in_channels=params["in_channels"],
+                hidden_channels=params["hidden_channels"],
+                out_channels=params["out_channels"],
+                num_layers=params["num_layers"],
+                dropout=params["dropout"],
+                encoding_dim=params["encoding_dim"],
             )
         case "GCN":
             repr_model = GCNModel(
-                in_channels=params['in_channels'],
-                hidden_channels=params['hidden_channels'],
-                out_channels=params['out_channels'],
-                num_layers=params['num_layers'],
-                dropout=params['dropout'],
-                encoding_dim=params['encoding_dim']
+                in_channels=params["in_channels"],
+                hidden_channels=params["hidden_channels"],
+                out_channels=params["out_channels"],
+                num_layers=params["num_layers"],
+                dropout=params["dropout"],
+                encoding_dim=params["encoding_dim"],
             )
         case "GAT":
             repr_model = GATModel(
-                in_channels=params['in_channels'],
-                hidden_channels=params['hidden_channels'],
-                out_channels=params['out_channels'],
-                num_layers=params['num_layers'],
-                dropout=params['dropout'],
-                encoding_dim=params['encoding_dim']
+                in_channels=params["in_channels"],
+                hidden_channels=params["hidden_channels"],
+                out_channels=params["out_channels"],
+                num_layers=params["num_layers"],
+                dropout=params["dropout"],
+                encoding_dim=params["encoding_dim"],
             )
         case "GraphSAGE":
             repr_model = GraphSAGEModel(
-                in_channels=params['in_channels'],
-                hidden_channels=params['hidden_channels'],
-                out_channels=params['out_channels'],
-                num_layers=params['num_layers'],
-                dropout=params['dropout'],
-                encoding_dim=params['encoding_dim']
+                in_channels=params["in_channels"],
+                hidden_channels=params["hidden_channels"],
+                out_channels=params["out_channels"],
+                num_layers=params["num_layers"],
+                dropout=params["dropout"],
+                encoding_dim=params["encoding_dim"],
             )
         case "HIMP":
             repr_model = HIMPModel(
-                in_channels=params['in_channels'],
-                hidden_channels=params['hidden_channels'],
-                out_channels=params['out_channels'],
-                num_layers=params['num_layers'],
-                dropout=params['dropout'],
+                in_channels=params["in_channels"],
+                hidden_channels=params["hidden_channels"],
+                out_channels=params["out_channels"],
+                num_layers=params["num_layers"],
+                dropout=params["dropout"],
             )
         case _:
             raise NotImplementedError
@@ -70,8 +69,11 @@ def create_repr_model(params: dict) -> nn.Module:
 
 
 def create_proj_model(params: dict) -> nn.Module:
-    return ProjectionHead(in_dim=params["out_channels"], out_dim=params["out_dim"],
-                          hidden_dim=params['proj_hidden_dim'])
+    return ProjectionHead(
+        in_dim=params["out_channels"],
+        out_dim=params["out_dim"],
+        hidden_dim=params["proj_hidden_dim"],
+    )
 
 
 class PolarisModel(nn.Module):
@@ -87,36 +89,62 @@ class PolarisModel(nn.Module):
 
 
 class GINModel(nn.Module):
-    def __init__(self, in_channels: int, hidden_channels: int, out_channels: int, num_layers: int, dropout: float, encoding_dim: int):
+    def __init__(
+        self,
+        in_channels: int,
+        hidden_channels: int,
+        out_channels: int,
+        num_layers: int,
+        dropout: float,
+        encoding_dim: int,
+    ):
         super().__init__()
         self.encoding_model = CategoricalEncodingModel(embedding_dim=encoding_dim)
         in_channels = self.encoding_model.get_feature_embedding_dim()
 
-        self.model = GIN(in_channels=in_channels, hidden_channels=hidden_channels, out_channels=out_channels,
-                         num_layers=num_layers, dropout=dropout)
+        self.model = GIN(
+            in_channels=in_channels,
+            hidden_channels=hidden_channels,
+            out_channels=out_channels,
+            num_layers=num_layers,
+            dropout=dropout,
+        )
         self.pool = global_add_pool
 
     def forward(self, data):
-        data = self.encoding_model(data) 
+        data = self.encoding_model(data)
         x, edge_index, edge_attr = data.x, data.edge_index, data.edge_attr
         h = self.model(x=x, edge_index=edge_index, edge_attr=edge_attr)
         h_G = self.pool(x=h, batch=data.batch)
-        
+
         return h_G
 
 
 class GCNModel(nn.Module):
-    def __init__(self, in_channels: int, hidden_channels: int, out_channels: int, num_layers: int, dropout: float, encoding_dim: int):
+    def __init__(
+        self,
+        in_channels: int,
+        hidden_channels: int,
+        out_channels: int,
+        num_layers: int,
+        dropout: float,
+        encoding_dim: int,
+    ):
         super().__init__()
         self.encoding_model = CategoricalEncodingModel(embedding_dim=encoding_dim)
         in_channels = self.encoding_model.get_feature_embedding_dim()
 
-        self.model = GCN(in_channels=in_channels, hidden_channels=hidden_channels, out_channels=out_channels,
-                         num_layers=num_layers, dropout=dropout)
+        self.model = GCN(
+            in_channels=in_channels,
+            hidden_channels=hidden_channels,
+            out_channels=out_channels,
+            num_layers=num_layers,
+            dropout=dropout,
+        )
         self.pool = global_add_pool
 
     def forward(self, data):
-        data = self.encoding_model(data) 
+        data = self.encoding_model(data)
         x, edge_index, edge_attr = data.x, data.edge_index, data.edge_attr
         h = self.model(x=x, edge_index=edge_index, edge_attr=edge_attr)
         h_G = self.pool(x=h, batch=data.batch)
@@ -125,17 +153,30 @@ class GCNModel(nn.Module):
 
 
 class GATModel(nn.Module):
-    def __init__(self, in_channels: int, hidden_channels: int, out_channels: int, num_layers: int, dropout: float, encoding_dim: int):
+    def __init__(
+        self,
+        in_channels: int,
+        hidden_channels: int,
+        out_channels: int,
+        num_layers: int,
+        dropout: float,
+        encoding_dim: int,
+    ):
         super().__init__()
         self.encoding_model = CategoricalEncodingModel(embedding_dim=encoding_dim)
         in_channels = self.encoding_model.get_feature_embedding_dim()
 
-        self.model = GAT(in_channels=in_channels, hidden_channels=hidden_channels, out_channels=out_channels,
-                         num_layers=num_layers, dropout=dropout)
+        self.model = GAT(
+            in_channels=in_channels,
+            hidden_channels=hidden_channels,
+            out_channels=out_channels,
+            num_layers=num_layers,
+            dropout=dropout,
+        )
         self.pool = global_add_pool
 
     def forward(self, data):
-        data = self.encoding_model(data) 
+        data = self.encoding_model(data)
         x, edge_index, edge_attr = data.x, data.edge_index, data.edge_attr
         h = self.model(x=x, edge_index=edge_index, edge_attr=edge_attr)
         h_G = self.pool(x=h, batch=data.batch)
@@ -144,17 +185,30 @@ class GATModel(nn.Module):
 
 
 class GraphSAGEModel(nn.Module):
-    def __init__(self, in_channels: int, hidden_channels: int, out_channels: int, num_layers: int, dropout: float, encoding_dim: int):
+    def __init__(
+        self,
+        in_channels: int,
+        hidden_channels: int,
+        out_channels: int,
+        num_layers: int,
+        dropout: float,
+        encoding_dim: int,
+    ):
         super().__init__()
         self.encoding_model = CategoricalEncodingModel(embedding_dim=encoding_dim)
         in_channels = self.encoding_model.get_feature_embedding_dim()
 
-        self.model = GraphSAGE(in_channels=in_channels, hidden_channels=hidden_channels, out_channels=out_channels,
-                               num_layers=num_layers, dropout=dropout)
+        self.model = GraphSAGE(
+            in_channels=in_channels,
+            hidden_channels=hidden_channels,
+            out_channels=out_channels,
+            num_layers=num_layers,
+            dropout=dropout,
+        )
         self.pool = global_add_pool
 
     def forward(self, data):
-        data = self.encoding_model(data) 
+        data = self.encoding_model(data)
         x, edge_index, edge_attr = data.x, data.edge_index, data.edge_attr
         h = self.model(x=x, edge_index=edge_index, edge_attr=edge_attr)
         h_G = self.pool(x=h, batch=data.batch)
@@ -163,9 +217,21 @@ class GraphSAGEModel(nn.Module):
 
 
 class HIMPModel(nn.Module):
-    def __init__(self, in_channels: int, hidden_channels: int, out_channels: int, num_layers: int, dropout: float):
+    def __init__(
+        self,
+        in_channels: int,
+        hidden_channels: int,
+        out_channels: int,
+        num_layers: int,
+        dropout: float,
+    ):
         super().__init__()
-        self.model = Himp(hidden_channels=hidden_channels, out_channels=out_channels, num_layers=num_layers, dropout=dropout)
+        self.model = Himp(
+            hidden_channels=hidden_channels,
+            out_channels=out_channels,
+            num_layers=num_layers,
+            dropout=dropout,
+        )
 
     def forward(self, data):
         return self.model(data)
@@ -200,8 +266,12 @@ class ProjectionHead(nn.Module):
 class CategoricalEncodingModel(nn.Module):
     def __init__(self, embedding_dim):
         super().__init__()
-        self.node_embedding = CategoricalEmbeddingModel(category_type="node", embedding_dim=embedding_dim)
-        self.edge_embedding = CategoricalEmbeddingModel(category_type="edge", embedding_dim=embedding_dim)
+        self.node_embedding = CategoricalEmbeddingModel(
+            category_type="node", embedding_dim=embedding_dim
+        )
+        self.edge_embedding = CategoricalEmbeddingModel(
+            category_type="edge", embedding_dim=embedding_dim
+        )
 
     def forward(self, data):
         data.x = self.node_embedding(data.x)
@@ -239,9 +309,7 @@ class CategoricalEmbeddingModel(nn.Module):
         )
 
     def forward(self, x):
-        embedded_vars = [
-            self.embeddings[i](x[:, i]) for i in range(len(self.embeddings))
-        ]
+        embedded_vars = [self.embeddings[i](x[:, i]) for i in range(len(self.embeddings))]
 
         return torch.cat(embedded_vars, dim=-1)
 

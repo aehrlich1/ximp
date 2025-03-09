@@ -1,6 +1,7 @@
 """
 This file will take care of all data related aspects.
 """
+
 import csv
 import warnings
 
@@ -17,7 +18,15 @@ warnings.simplefilter("ignore", category=UserWarning)
 
 
 class PolarisDataset(InMemoryDataset):
-    def __init__(self, root, task: str, target_task: str, train=True, force_reload=True, log_transform=True):
+    def __init__(
+        self,
+        root,
+        task: str,
+        target_task: str,
+        train=True,
+        force_reload=True,
+        log_transform=True,
+    ):
         self.target_task = target_task
         self.train = train
         self.log_transform = log_transform
@@ -35,18 +44,18 @@ class PolarisDataset(InMemoryDataset):
 
     @property
     def raw_file_names(self):
-        return ['train_polaris.csv', 'test_polaris.csv']
+        return ["train_polaris.csv", "test_polaris.csv"]
 
     @property
     def processed_file_names(self):
-        return [f'train_{self.target_col}.pt', 'test.pt']
+        return [f"train_{self.target_col}.pt", "test.pt"]
 
     def process(self):
         self.process_train() if self.train else self.process_test()
 
     def process_train(self):
         data_list: list[Data] = []
-        with open(self.raw_paths[0], 'r') as file:
+        with open(self.raw_paths[0], "r") as file:
             lines = csv.reader(file)
             next(lines)  # skip header
 
@@ -74,7 +83,7 @@ class PolarisDataset(InMemoryDataset):
 
     def process_test(self):
         data_list: list[Data] = []
-        with open(self.raw_paths[1], 'r') as file:
+        with open(self.raw_paths[1], "r") as file:
             lines = csv.reader(file)
             next(lines)  # skip header
 
@@ -99,7 +108,7 @@ class PolarisDataset(InMemoryDataset):
             case "MDR1-MDCKII":
                 return 5
             case _:
-                raise ValueError(f'Unknown target task: {target_task}')
+                raise ValueError(f"Unknown target task: {target_task}")
 
     @staticmethod
     def _potency_target_to_col_mapping(target_task: str) -> int:
@@ -109,11 +118,13 @@ class PolarisDataset(InMemoryDataset):
             case "pIC50 (SARS-CoV-2 Mpro)":
                 return 2
             case _:
-                raise ValueError(f'Unknown target task: {target_task}')
+                raise ValueError(f"Unknown target task: {target_task}")
 
 
 if __name__ == "__main__":
-    dataset = PolarisDataset(root="../data/polaris/admet", task="admet", target_task="MDR1-MDCKII", train=True)
+    dataset = PolarisDataset(
+        root="../data/polaris/admet", task="admet", target_task="MDR1-MDCKII", train=True
+    )
     train_dataset, valid_dataset = scaffold_split(dataset)
     print(len(train_dataset), len(valid_dataset))
     print(dataset)

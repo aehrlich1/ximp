@@ -1,4 +1,3 @@
-from torch.multiprocessing import Manager, Pool
 from pathlib import Path
 
 import numpy as np
@@ -6,18 +5,19 @@ import pandas as pd
 import torch
 from sklearn.model_selection import StratifiedKFold
 from torch import nn
+from torch.multiprocessing import Manager, Pool
 from torch.optim import Adam
 from torch_geometric.loader import DataLoader
 from tqdm import tqdm
 
 from src.data import PolarisDataset
-from src.models import PolarisModel, create_repr_model, create_proj_model
+from src.models import PolarisModel, create_proj_model, create_repr_model
 from src.utils import (
     PerformanceTracker,
     format_time_readable,
-    scaffold_split,
     make_combinations,
     save_dict_to_csv,
+    scaffold_split,
 )
 
 
@@ -100,7 +100,6 @@ class Polaris:
             if self.performance_tracker.early_stop:
                 self.performance_tracker.log({"early_stop_epoch": epoch})
                 break
-
 
     def train_final(self, train_dataset) -> None:
         train_dataloader = DataLoader(
@@ -208,14 +207,13 @@ class PolarisDispatcher:
     def __init__(self, params: dict) -> None:
         self.params = params
 
-
     def run(self):
         torch.set_num_threads(1)
         with Manager() as manager:
             counter = manager.Value(int, 0)
             lock = manager.Lock()
             queue = manager.Queue()
-            
+
             params_list: list[dict] = make_combinations(self.params)
             processes = 32
 
@@ -227,16 +225,22 @@ class PolarisDispatcher:
             print(f"Total param count: {len(params_list)}")
             print("Using device: cpu")
 
-            estimated_secs_to_complete = (len(params_list)/processes)*80
-            print(f"Estimated time to completion: {format_time_readable(estimated_secs_to_complete)}")
+            estimated_secs_to_complete = (len(params_list) / processes) * 80
+            print(
+                f"Estimated time to completion: {format_time_readable(estimated_secs_to_complete)}"
+            )
 
             with Pool(processes=processes) as pool:
                 for params in params_list:
                     pool.apply_async(
                         self.worker,
-                        (params, queue,),
+                        (
+                            params,
+                            queue,
+                        ),
                         callback=update_progress,
-                        error_callback=lambda e: print(e))
+                        error_callback=lambda e: print(e),
+                    )
                 pool.close()
                 pool.join()
 
@@ -260,4 +264,3 @@ class PolarisDispatcher:
         torch.set_num_threads(1)
         polaris = Polaris(params, queue)
         polaris.run()
-
