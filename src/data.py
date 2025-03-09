@@ -90,6 +90,7 @@ class PolarisDataset(InMemoryDataset):
             for line in lines:
                 smiles = line[0]
                 data = from_smiles(smiles)
+                data = self.junctionTree(data)
                 data_list.append(data)
 
         self.save(data_list, self.processed_paths[1])
