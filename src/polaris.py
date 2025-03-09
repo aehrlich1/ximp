@@ -2,13 +2,13 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from sklearn.metrics import mean_absolute_error
 import torch
 from sklearn.model_selection import StratifiedKFold
 from torch import nn
 from torch.multiprocessing import Manager, Pool
 from torch.optim import Adam
 from torch_geometric.loader import DataLoader
-from tqdm import tqdm
 
 from src.data import PolarisDataset
 from src.models import PolarisModel, create_proj_model, create_repr_model
@@ -49,9 +49,7 @@ class Polaris:
         labels = self.train_scaffold.y.view(-1).tolist()
 
         y_binned = pd.qcut(labels, q=self.params["num_cv_bins"], labels=False)
-        skf = StratifiedKFold(
-            n_splits=self.params["num_cv_folds"], shuffle=True, random_state=42
-        )
+        skf = StratifiedKFold(n_splits=self.params["num_cv_folds"], shuffle=True, random_state=42)
 
         # print("Running K-Fold CV...")
         val_loss_list = []
@@ -74,18 +72,25 @@ class Polaris:
             self.train(train_fold_dataloader, valid_fold_dataloader)
             val_loss_list.append(self.performance_tracker.best_valid_loss)
 
-        print(f"Validation losses: {val_loss_list}")
-        print(f"Average validation loss: {np.mean(val_loss_list)}")
-
         self.params.update({"mean_val_loss": np.mean(val_loss_list)})
         self.params.update({"patience": self.performance_tracker.patience})
         self.params.update(
-            {
-                "final_avg_epochs": round(
-                    np.mean(self.performance_tracker.early_stop_epoch)
-                )
-            }
+            {"final_avg_epochs": round(np.mean(self.performance_tracker.early_stop_epoch))}
         )
+
+        # Reset model and train on train scaffold.
+        # Evaluate on test scaffold. Report MAE.
+        self._init_model()
+        self._init_optimizer()
+        self.train_final(self.train_scaffold)
+        preds = self.predict(self.test_scaffold)
+        preds = [pred[1] for pred in preds]
+        mae = mean_absolute_error(preds, self.test_scaffold.y)
+        self.params.update({"mae_test_scaffold": mae})
+
+        print(f"Validation losses: {val_loss_list}")
+        print(f"Average validation loss: {np.mean(val_loss_list)}")
+        print(f"Mean average error for {self.params['target_task']} on test_scaffold: {mae:.3f}")
 
         if self.queue is not None:
             self.queue.put(self.params)
@@ -105,7 +110,7 @@ class Polaris:
         train_dataloader = DataLoader(
             train_dataset, batch_size=self.params["batch_size"], shuffle=True
         )
-        for _ in tqdm(range(self.params["final_avg_epochs"])):
+        for _ in range(self.params["final_avg_epochs"]):
             self._train_loop(train_dataloader)
 
     def _init_device(self):
@@ -215,7 +220,7 @@ class PolarisDispatcher:
             queue = manager.Queue()
 
             params_list: list[dict] = make_combinations(self.params)
-            processes = 32
+            processes = 10
 
             def update_progress(_):
                 with lock:
@@ -253,9 +258,7 @@ class PolarisDispatcher:
             else:
                 name = self.params["repr_model"].lower()
 
-            results_path: Path = (
-                Path(".") / "results" / f"{self.params['task']}_{name}_results.csv"
-            )
+            results_path: Path = Path(".") / "results" / f"{self.params['task']}_{name}_results.csv"
             results_path.parent.mkdir(parents=True, exist_ok=True)
             save_dict_to_csv(result, results_path)
 
