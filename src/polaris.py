@@ -90,7 +90,7 @@ class Polaris:
 
         print(f"Validation losses: {val_loss_list}")
         print(f"Average validation loss: {np.mean(val_loss_list)}")
-        print(f"Mean average error for {self.params['target_task']} on test_scaffold: {mae:.3f}")
+        print(f"Mean absolute error for {self.params['target_task']} on test_scaffold: {mae:.3f}")
 
         if self.queue is not None:
             self.queue.put(self.params)
@@ -220,7 +220,7 @@ class PolarisDispatcher:
             queue = manager.Queue()
 
             params_list: list[dict] = make_combinations(self.params)
-            processes = 10
+            processes = 32
 
             def update_progress(_):
                 with lock:
