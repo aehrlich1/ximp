@@ -14,6 +14,7 @@ from src.data import PolarisDataset
 from src.models import PolarisModel, create_repr_model, create_proj_model
 from src.utils import (
     PerformanceTracker,
+    format_time_readable,
     scaffold_split,
     make_combinations,
     save_dict_to_csv,
@@ -52,7 +53,7 @@ class Polaris:
             n_splits=self.params["num_cv_folds"], shuffle=True, random_state=42
         )
 
-        print("Running K-Fold CV...")
+        # print("Running K-Fold CV...")
         val_loss_list = []
 
         for fold, (train_idx, valid_idx) in enumerate(skf.split(smiles, y_binned)):
@@ -90,7 +91,7 @@ class Polaris:
             self.queue.put(self.params)
 
     def train(self, train_dataloader, valid_dataloader) -> None:
-        for epoch in tqdm(range(self.params["epochs"])):
+        for epoch in range(self.params["epochs"]):
             self.performance_tracker.log({"epoch": epoch})
             self._train_loop(train_dataloader)
             self._valid_loop(valid_dataloader)
@@ -207,20 +208,35 @@ class PolarisDispatcher:
     def __init__(self, params: dict) -> None:
         self.params = params
 
+
     def run(self):
         torch.set_num_threads(1)
         with Manager() as manager:
+            counter = manager.Value(int, 0)
+            lock = manager.Lock()
             queue = manager.Queue()
-
+            
             params_list: list[dict] = make_combinations(self.params)
+            processes = 32
+
+            def update_progress(_):
+                with lock:
+                    counter.value += 1
+                    print(f"Progress: {counter.value}/{len(params_list)}")
 
             print(f"Total param count: {len(params_list)}")
             print("Using device: cpu")
 
-    
-            with Pool(processes = 8) as pool:
+            estimated_secs_to_complete = (len(params_list)/processes)*80
+            print(f"Estimated time to completion: {format_time_readable(estimated_secs_to_complete)}")
+
+            with Pool(processes=processes) as pool:
                 for params in params_list:
-                    pool.apply_async(self.worker, (params, queue,), error_callback=lambda e: print(e))
+                    pool.apply_async(
+                        self.worker,
+                        (params, queue,),
+                        callback=update_progress,
+                        error_callback=lambda e: print(e))
                 pool.close()
                 pool.join()
 

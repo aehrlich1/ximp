@@ -13,6 +13,7 @@ from src.utils import scaffold_split
 
 # Ignore FutureWarnings from torch.load about weightsOnly bool != True
 warnings.simplefilter("ignore", category=FutureWarning)
+warnings.simplefilter("ignore", category=UserWarning)
 
 
 class PolarisDataset(InMemoryDataset):
