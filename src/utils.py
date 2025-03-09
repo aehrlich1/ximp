@@ -215,3 +215,10 @@ def save_dict_to_csv(data: list[dict], output_path: Path):
         writer = csv.DictWriter(file, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(data)
+
+
+def format_time_readable(seconds):
+    hours = seconds // 3600
+    minutes = (seconds % 3600) // 60
+    sec = seconds % 60
+    return f"{hours}h {minutes}m {sec}s"
