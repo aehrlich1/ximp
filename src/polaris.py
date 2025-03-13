@@ -18,6 +18,7 @@ from src.utils import (
     make_combinations,
     save_dict_to_csv,
     scaffold_split,
+    ScaffoldKFold
 )
 
 
@@ -49,12 +50,13 @@ class Polaris:
         labels = self.train_scaffold.y.view(-1).tolist()
 
         y_binned = pd.qcut(labels, q=self.params["num_cv_bins"], labels=False)
-        skf = StratifiedKFold(n_splits=self.params["num_cv_folds"], shuffle=True, random_state=42)
+        # skf = StratifiedKFold(n_splits=self.params["num_cv_folds"], shuffle=True, random_state=42)
+        scaffold_kfold = ScaffoldKFold(n_splits=5, shuffle=True, random_state=42)
 
         # print("Running K-Fold CV...")
         val_loss_list = []
 
-        for fold, (train_idx, valid_idx) in enumerate(skf.split(smiles, y_binned)):
+        for train_idx, valid_idx in scaffold_kfold.split(smiles, y_binned):
             self._init_model()  # Reinitialize model
             self._init_optimizer()
             self.performance_tracker.reset()
@@ -220,7 +222,7 @@ class PolarisDispatcher:
             queue = manager.Queue()
 
             params_list: list[dict] = make_combinations(self.params)
-            processes = 32
+            processes = 64
 
             def update_progress(_):
                 with lock:
@@ -235,7 +237,7 @@ class PolarisDispatcher:
                 f"Estimated time to completion: {format_time_readable(estimated_secs_to_complete)}"
             )
 
-            with Pool(processes=processes) as pool:
+            with Pool(processes=None) as pool:
                 for params in params_list:
                     pool.apply_async(
                         self.worker,

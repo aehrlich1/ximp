@@ -20,7 +20,6 @@ def create_repr_model(params: dict) -> nn.Module:
             repr_model = ECFPModel(radius=params["radius"], fpSize=params["out_channels"])
         case "GIN":
             repr_model = GINModel(
-                in_channels=params["in_channels"],
                 hidden_channels=params["hidden_channels"],
                 out_channels=params["out_channels"],
                 num_layers=params["num_layers"],
@@ -29,7 +28,6 @@ def create_repr_model(params: dict) -> nn.Module:
             )
         case "GCN":
             repr_model = GCNModel(
-                in_channels=params["in_channels"],
                 hidden_channels=params["hidden_channels"],
                 out_channels=params["out_channels"],
                 num_layers=params["num_layers"],
@@ -38,7 +36,6 @@ def create_repr_model(params: dict) -> nn.Module:
             )
         case "GAT":
             repr_model = GATModel(
-                in_channels=params["in_channels"],
                 hidden_channels=params["hidden_channels"],
                 out_channels=params["out_channels"],
                 num_layers=params["num_layers"],
@@ -47,7 +44,6 @@ def create_repr_model(params: dict) -> nn.Module:
             )
         case "GraphSAGE":
             repr_model = GraphSAGEModel(
-                in_channels=params["in_channels"],
                 hidden_channels=params["hidden_channels"],
                 out_channels=params["out_channels"],
                 num_layers=params["num_layers"],
@@ -56,7 +52,6 @@ def create_repr_model(params: dict) -> nn.Module:
             )
         case "HIMP":
             repr_model = HIMPModel(
-                in_channels=params["in_channels"],
                 hidden_channels=params["hidden_channels"],
                 out_channels=params["out_channels"],
                 num_layers=params["num_layers"],
@@ -91,7 +86,6 @@ class PolarisModel(nn.Module):
 class GINModel(nn.Module):
     def __init__(
         self,
-        in_channels: int,
         hidden_channels: int,
         out_channels: int,
         num_layers: int,
@@ -123,7 +117,6 @@ class GINModel(nn.Module):
 class GCNModel(nn.Module):
     def __init__(
         self,
-        in_channels: int,
         hidden_channels: int,
         out_channels: int,
         num_layers: int,
@@ -155,7 +148,6 @@ class GCNModel(nn.Module):
 class GATModel(nn.Module):
     def __init__(
         self,
-        in_channels: int,
         hidden_channels: int,
         out_channels: int,
         num_layers: int,
@@ -187,7 +179,6 @@ class GATModel(nn.Module):
 class GraphSAGEModel(nn.Module):
     def __init__(
         self,
-        in_channels: int,
         hidden_channels: int,
         out_channels: int,
         num_layers: int,
@@ -219,7 +210,6 @@ class GraphSAGEModel(nn.Module):
 class HIMPModel(nn.Module):
     def __init__(
         self,
-        in_channels: int,
         hidden_channels: int,
         out_channels: int,
         num_layers: int,

@@ -2,10 +2,10 @@ task: "admet"
 target_task: ["MLM", "HLM", "KSOL", "LogD", "MDR1-MDCKII"]
 
 # Learning params
-batch_size: [32]
+batch_size: [16, 32]
 epochs: 500
-lr: [1.0e-3]
-weight_decay: [0.0, 1.0e-4, 1.0e-2]
+lr: [1.0e-4, 1.0e-3]
+weight_decay: [0.0, 1.0e-4]
 
 # Cross validation params
 num_cv_folds: 5
@@ -14,10 +14,10 @@ scaffold_split_val_sz : 0.1
 
 # Representation model params
 repr_model: "ECFP"
-radius: [2]
-out_channels: [1024]
+radius: [2, 3]
+out_channels: [1024, 2048]
 
 # Projection head model params
 # latent_dim: *out_channels
-proj_hidden_dim: [64]
+proj_hidden_dim: [64, 128]
 out_dim: 1
