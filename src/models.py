@@ -11,6 +11,7 @@ from rdkit.Chem import AllChem
 from torch import nn
 from torch_geometric.nn import GAT, GCN, GIN, GraphSAGE, global_add_pool
 
+from src.ehimp import EHimp
 from src.himp import Himp
 
 
@@ -52,6 +53,13 @@ def create_repr_model(params: dict) -> nn.Module:
             )
         case "HIMP":
             repr_model = HIMPModel(
+                hidden_channels=params["hidden_channels"],
+                out_channels=params["out_channels"],
+                num_layers=params["num_layers"],
+                dropout=params["dropout"],
+            )
+        case "EHIMP":
+            repr_model = EHIMPModel(
                 hidden_channels=params["hidden_channels"],
                 out_channels=params["out_channels"],
                 num_layers=params["num_layers"],
@@ -217,6 +225,25 @@ class HIMPModel(nn.Module):
     ):
         super().__init__()
         self.model = Himp(
+            hidden_channels=hidden_channels,
+            out_channels=out_channels,
+            num_layers=num_layers,
+            dropout=dropout,
+        )
+
+    def forward(self, data):
+        return self.model(data)
+
+class EHIMPModel(nn.Module):
+    def __init__(
+        self,
+        hidden_channels: int,
+        out_channels: int,
+        num_layers: int,
+        dropout: float,
+    ):
+        super().__init__()
+        self.model = EHimp(
             hidden_channels=hidden_channels,
             out_channels=out_channels,
             num_layers=num_layers,
