@@ -1,4 +1,5 @@
 # Based on: https://github.com/rusty1s/himp-gnn/blob/master/transform.py
+import numpy as np
 import torch
 from rdkit import Chem
 from rdkit.Chem.rdchem import BondType
@@ -62,3 +63,138 @@ class OGBTransform(object):
         data.x[:, 0] += 1
         data.edge_attr[:, 0] += 1
         return data
+
+class FeatureTree(object):
+    def __call__(self, data):
+        mol = mol_from_data(data)
+        out = tree_decomposition(mol, return_vocab=True)
+
+        data = ReducedGraphData(**{k: v for k, v in data})
+        data.rg_edge_index, data.mapping, data.rg_num_atoms, data.rg_atom_features = out
+        data.raw_num_atoms = data.x.size(0)
+
+        resolution=5
+        for i in range(resolution): #TODO Adapt to multi resolution data. Likewise, adapt the one below.
+            data = getFeatureTreeWithLowerResolution(data)
+
+        print(data, flush=True)
+        return data
+class ReducedGraphData(Data):
+    """
+    Custom data class for storing information related to the Reduced Graph.
+
+    Attributes:
+        - rg_edge_index (Tensor): Edge indices of the Reduced Graph.
+        - mapping (Tensor): Mapping information between the raw graph and the Reduced Graph.
+        - rg_num_atoms (Tensor): Number of atoms in the Reduced Graph.
+        - raw_num_atoms (int): Number of atoms in the raw graph.
+
+    Methods:
+        - __cat_dim__(self, key, value, *args, **kwargs): Custom implementation for concatenation dimension.
+        - __inc__(self, key, value, *args, **kwargs): Custom implementation for incremental value.
+
+    """
+    def __cat_dim__(self, key, value, *args, **kwargs):
+        if key in ['edge_index', 'rg_edge_index', 'mapping']:
+            return 1
+        else:
+            return 0
+
+    def __inc__(self, key, value, *args, **kwargs):
+        if key == 'edge_index':
+            return self.raw_num_atoms
+        elif key == 'rg_edge_index':
+            return self.rg_num_atoms
+        elif key == 'mapping':
+            return torch.tensor([[torch.sum(self.raw_num_atoms)], [self.rg_num_atoms]])
+        else:
+            return super().__inc__(key, value, *args, **kwargs)
+
+
+def getFeatureTreeData(molecule, num_of_nodes, resolution=0): # Construction reminiscent of HIMP junction trees.
+    """
+    Get data for the Feature Tree (FT) from a given molecule with a specified resolution.
+
+    Parameters:
+        - molecule (Chem.rdchem.Mol): RDKit Mol object representing a molecule.
+        - num_of_nodes (int): Number of nodes in the raw graph.
+        - resolution (int): Resolution level for the Feature Tree. Use 0 for standard FT.
+
+    Returns:
+        - data (ReducedGraphData): Data for the FT in the form of ReducedGraphData, including features and mapping.
+    """
+
+    out = tree_decomposition(molecule, return_vocab=True)
+
+    data = ReducedGraphData()
+    data.rg_edge_index, data.mapping, data.rg_num_atoms, data.rg_atom_features = out
+    data.raw_num_atoms = num_of_nodes
+
+    # Recursively get FT with lower resolution if specified
+    for _ in range(resolution):
+        data = getFeatureTreeWithLowerResolution(data)
+
+    return data
+
+
+def getFeatureTreeWithLowerResolution(tree, resolution=0):
+    # Apparently compatible with junction trees used in original HIMP.
+    # Construction of Junction tree is identical and this method only "folds" leafs inwards.
+
+    unique_values, counts = torch.unique(tree.rg_edge_index[0], return_counts=True)
+
+    leaf_idxs = unique_values[counts == 1]  # Leaf nodes
+    non_leaf_idxs = unique_values[counts > 1]  # Inner nodes
+    if tree.rg_edge_index.shape[1] == 2:  # in case of one edge:
+        leaf_idxs = leaf_idxs[1:]
+        non_leaf_idxs = torch.tensor([leaf_idxs[0]])
+    unconnected = np.setdiff1d(np.arange(tree.rg_num_atoms), unique_values)
+
+    # Atrributes of the resulting tree
+    new_rg_edge_index = torch.clone(tree.rg_edge_index)
+    new_mapping = torch.clone(tree.mapping)
+    new_rg_atom_features = torch.clone(tree.rg_atom_features)
+    new_rg_num_atoms = tree.rg_num_atoms - len(leaf_idxs)
+
+    non_leaf_edges = torch.logical_and(torch.isin(tree.rg_edge_index[0], non_leaf_idxs), torch.isin(tree.rg_edge_index[1], non_leaf_idxs)) # Edges that are not connecting leaf nodes
+    new_rg_edge_index = tree.rg_edge_index[:, non_leaf_edges]
+
+    idx_reduction = torch.zeros(tree.rg_num_atoms, dtype=torch.int64) # Array that maps the gap between the index of a node in the original and new trees
+    parents = tree.rg_edge_index[1, torch.isin(tree.rg_edge_index[0], leaf_idxs)] # Parents of leaves
+
+    for leaf, parent in zip(leaf_idxs, parents):
+        idx_reduction[leaf:] += 1
+
+        new_mapping[1, new_mapping[1] == leaf] = parent  # Map nodes that are mapped to the leaf to its parent
+
+        if new_rg_atom_features[leaf] < new_rg_atom_features[parent]:  # Change the feature attribute it needed
+            new_rg_atom_features[parent] = new_rg_atom_features[leaf].to(torch.int64)
+
+    # Delete multiple occurences
+    new_mapping, _ = torch.unique(new_mapping, dim=1, return_inverse=True)
+
+    new_rg_atom_features = concatenated_array = new_rg_atom_features[np.concatenate((non_leaf_idxs, unconnected))]
+
+    #Indexing
+    new_rg_edge_index -= idx_reduction[new_rg_edge_index]
+    new_mapping[1] -= idx_reduction[new_mapping[1]]
+
+    # Create new data point
+    reduced_tree = ReducedGraphData(**{k: v for k, v in tree})
+
+    reduced_tree.rg_edge_index = new_rg_edge_index
+    reduced_tree.mapping = new_mapping
+    reduced_tree.rg_num_atoms = new_rg_num_atoms
+    reduced_tree.rg_atom_features = new_rg_atom_features
+    reduced_tree.raw_num_atoms = tree.raw_num_atoms
+
+    return reduced_tree
+
+#reduced_tree = geetFeatureTreeWithLowerResolution(getFeatureTreeData(mols[i], 0))
+
+def mol_with_atom_index(mol):
+    for atom in mol.GetAtoms():
+        atom.SetAtomMapNum(atom.GetIdx())
+    return mol
+
+
