@@ -4,6 +4,9 @@ from torch.nn import BatchNorm1d, Embedding, Linear, ModuleList, ReLU, Sequentia
 from torch_geometric.nn import GINConv, GINEConv
 from torch_scatter import scatter
 
+from src.transform import ReducedGraphData
+
+
 class AtomEncoder(torch.nn.Module):
     """
         Taken from: Matthias Fey, Jan-Gin Yuen, and Frank Weichert. Hierarchical inter-
@@ -38,7 +41,7 @@ class BondEncoder(torch.nn.Module):
         self.embeddings = torch.nn.ModuleList()
 
         for i in range(3):
-            emb = Embedding(6, hidden_channels)
+            emb = Embedding(100, hidden_channels)
             torch.nn.init.xavier_uniform_(emb.weight.data)
             self.embeddings.append(emb)
 
@@ -63,7 +66,7 @@ class EHimp(torch.nn.Module):
 
     """
     def __init__(self, hidden_channels, out_channels, num_layers, dropout=0.0,
-                 rg_num=0, nums_of_features=[], device='cpu', use_raw=True, inter_message_passing=True):
+                 rg_num=3, nums_of_features=[8,8,8], device='cpu', use_raw=True, inter_message_passing=True): #TODO Hyperparameters need either be infered or  go in config
         """
         Constructor for NetCustom.
 
@@ -162,7 +165,24 @@ class EHimp(torch.nn.Module):
         for i in range(rg_num):
             self.rg_lins.append(Linear(hidden_channels, hidden_channels)).to(device)
 
-    def forward(self, data, reduced_graphs):
+    def __collect_rg_from_data(self, data):
+        """
+        Collect reduced graph data from data object.
+        """
+        reduced_graphs = []
+        idx = 0
+        while hasattr(data, f'rg_edge_index_{idx}'):
+            rg_data = ReducedGraphData()
+            setattr(rg_data, f'rg_edge_index', getattr(data, f'rg_edge_index_{idx}'))
+            setattr(rg_data, f'mapping', getattr(data, f'mapping_{idx}'))
+            setattr(rg_data, f'rg_num_atoms', getattr(data, f'rg_num_atoms_{idx}'))
+            setattr(rg_data, f'rg_atom_features', getattr(data, f'rg_atom_features_{idx}'))
+            idx+=1
+            #rg_data.to(data.get_device())
+            reduced_graphs.append(rg_data)
+        return reduced_graphs
+
+    def forward(self, data):
         """
         Forward pass of the model.
 
@@ -174,6 +194,7 @@ class EHimp(torch.nn.Module):
             - x: Model output.
 
         """
+        reduced_graphs = self.__collect_rg_from_data(data)
         rg_num = len(reduced_graphs)
 
         # Atom encoding for raw graph
@@ -192,7 +213,6 @@ class EHimp(torch.nn.Module):
                 x = self.atom_batch_norms[i](x)
                 x = F.relu(x)
                 x = F.dropout(x, self.dropout, training=self.training)
-
             # GNN layers for reduced graphs
             for j in range(self.rg_num):
                 row, col = reduced_graphs[j].mapping
