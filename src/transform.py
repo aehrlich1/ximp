@@ -11,6 +11,11 @@ bonds = [bond for bond in BondType.__dict__.values() if isinstance(bond, BondTyp
 
 
 def mol_from_data(data):
+    '''
+    DEPRECATED - NOT IN USE ANYMORE
+    Converts a PyG Data object to an RDKit Mol object.
+    TBD: Remove this function as there exists a PyG variant: https://pytorch-geometric.readthedocs.io/en/2.6.1/_modules/torch_geometric/utils/smiles.html
+    '''
     mol = Chem.RWMol()
 
     x = data.x if data.x.dim() == 1 else data.x[:, 0]
@@ -66,29 +71,35 @@ class OGBTransform(object):
         return data
 
 class ReducedGraph(object):
-    def __call__(self, data, erg = True, ft = True, resolution=2):
+    def __init__(self, use_erg, use_ft, ft_resolution):
+        self.use_erg = use_erg
+        self.use_ft = use_ft
+        self.ft_resolution = ft_resolution
+
+    def __call__(self, data):
         offset = 0
-        if ft:
+        data = ReducedGraphData(**{k: v for k, v in data})
+        data.node_feat = data.x  # Compatibility w/ EHimp TODO change EHIMP to adherence to naming convention
+        data.edge_feat = data.edge_attr  # Compatibility EHimp
+
+        if self.use_ft:
             mol = Chem.MolFromSmiles(data.smiles)
             out = tree_decomposition(mol, return_vocab=True)
-            data = ReducedGraphData(**{k: v for k, v in data})
-            data.node_feat = data.x # Compatibility w/ EHimp TODO adhere to naming convention
-            data.edge_feat = data.edge_attr # Compatibility EHimp
-            data.rg_edge_index_0, data.mapping_0, data.rg_num_atoms_0, data.rg_atom_features_0 = out
+            data.rg_edge_index_0, data.mapping_0, data.rg_num_atoms_0, data.rg_atom_features_0 = out #TODO base case should also be encapsulated by addFeatureTreeWithLowerResolution
             data.raw_num_atoms_0 = data.x.size(0)
-
-            for i in range(0, resolution):
-                data = addFeatureTreeWithLowerResolution(data, i + 1) #i here is just for naming the attributes
-            offset = resolution + 1
-        if erg:
+            for i in range(1, self.ft_resolution):
+                data = addFeatureTreeWithLowerResolution(data, i) # The i here is just for naming the attributes
+            offset = self.ft_resolution
+        if self.use_erg:
             # Generate ErG fingerprint
             mol = Chem.MolFromSmiles(data.smiles)
-            erg = getErGData(mol, data.x.size(0))
+            erg = getErGData(mol, data.x.size(0)) # TODO standardize so it adds graphs just as addFeatureTreeWithLowerResolution
             setattr(data, f'rg_edge_index_{offset}', erg.rg_edge_index)
             setattr(data, f'mapping_{offset}', erg.mapping)
             setattr(data, f'rg_num_atoms_{offset}', erg.rg_num_atoms)
             setattr(data, f'rg_atom_features_{offset}', erg.rg_atom_features)
             setattr(data, f'raw_num_atoms_{offset}', data.x.size(0))
+        #print(data, flush=True)
         return data
 class ReducedGraphData(Data):
     """
@@ -163,7 +174,7 @@ def addFeatureTreeWithLowerResolution(tree, resolution=1):
     # Delete multiple occurences
     new_mapping, _ = torch.unique(new_mapping, dim=1, return_inverse=True)
 
-    new_rg_atom_features = concatenated_array = new_rg_atom_features[np.concatenate((non_leaf_idxs, unconnected))]
+    new_rg_atom_features = new_rg_atom_features[np.concatenate((non_leaf_idxs, unconnected))]
 
     #Indexing
     new_rg_edge_index -= idx_reduction[new_rg_edge_index]

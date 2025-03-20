@@ -59,11 +59,14 @@ def create_repr_model(params: dict) -> nn.Module:
                 dropout=params["dropout"],
             )
         case "EHIMP":
+            rg_num = int(params["use_ft"]) * params["ft_resolution"] + int(params["use_erg"])
             repr_model = EHIMPModel(
                 hidden_channels=params["hidden_channels"],
                 out_channels=params["out_channels"],
                 num_layers=params["num_layers"],
                 dropout=params["dropout"],
+                rg_num=rg_num,
+                rg_embedding_dim=[params["rg_embedding_dim"]]*rg_num
             )
         case _:
             raise NotImplementedError
@@ -241,6 +244,9 @@ class EHIMPModel(nn.Module):
         out_channels: int,
         num_layers: int,
         dropout: float,
+        rg_num: int,
+        rg_embedding_dim=list
+
     ):
         super().__init__()
         self.model = EHimp(
@@ -248,6 +254,8 @@ class EHIMPModel(nn.Module):
             out_channels=out_channels,
             num_layers=num_layers,
             dropout=dropout,
+            rg_num=rg_num,
+            rg_embedding_dim=rg_embedding_dim
         )
 
     def forward(self, data):

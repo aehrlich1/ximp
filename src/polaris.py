@@ -146,6 +146,9 @@ class Polaris:
             train=True,
             log_transform=log_transform,
             force_reload=False,
+            use_erg = self.params['use_erg'],
+            use_ft = self.params['use_ft'],
+            ft_resolution = self.params['ft_resolution']
         )
         self.test_polaris = PolarisDataset(
             root=root,
@@ -154,6 +157,9 @@ class Polaris:
             train=False,
             log_transform=log_transform,
             force_reload=False,
+            use_erg=self.params['use_erg'],
+            use_ft=self.params['use_ft'],
+            ft_resolution=self.params['ft_resolution']
         )
 
         self.train_scaffold, self.test_scaffold = scaffold_split(

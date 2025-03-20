@@ -26,12 +26,16 @@ class PolarisDataset(InMemoryDataset):
         train=True,
         force_reload=True,
         log_transform=True,
+        use_erg=False,
+        use_ft=False,
+        ft_resolution=0
     ):
         self.target_task = target_task
         self.train = train
         self.log_transform = log_transform
         self.junctionTree = JunctionTree()
-        self.featureTree = ReducedGraph()
+        self.use_himp_preprocessing = not(use_ft or use_erg)
+        self.reducedGraph = ReducedGraph(use_erg=use_erg, use_ft=use_ft, ft_resolution=ft_resolution)
 
         if task == "admet":
             self.target_col = self._admet_target_to_col_mapping(target_task)
@@ -40,7 +44,7 @@ class PolarisDataset(InMemoryDataset):
         else:
             raise ValueError(f"Unknown task: {task}")
 
-        super().__init__(root, force_reload=False)
+        super().__init__(root, force_reload=True)
         self.load(self.processed_paths[0] if train else self.processed_paths[1])
 
     @property
@@ -76,8 +80,10 @@ class PolarisDataset(InMemoryDataset):
                 data = from_smiles(smiles)
                 data.y = y
 
-                #data = self.junctionTree(data)
-                data = self.featureTree(data)
+                if self.use_himp_preprocessing:
+                    data = self.junctionTree(data) # HIMP Graph
+                else:
+                    data = self.reducedGraph(data) # Extended HIMP Graphs
 
                 data_list.append(data)
 
