@@ -172,7 +172,7 @@ class Polaris:
             self.optimizer.step()
             self.optimizer.zero_grad()
             epoch_loss += loss.item()
-
+            #print(loss.item(), flush=True)
         average_loss = epoch_loss / len(dataloader)
         self.performance_tracker.log({"train_loss": average_loss})
 

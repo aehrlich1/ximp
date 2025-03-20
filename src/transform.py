@@ -2,6 +2,7 @@
 import numpy as np
 import torch
 from rdkit import Chem
+from rdkit.Chem.rdReducedGraphs import GenerateMolExtendedReducedGraph
 from rdkit.Chem.rdchem import BondType
 from torch_geometric.data import Data
 from torch_geometric.utils import tree_decomposition
@@ -66,9 +67,10 @@ class OGBTransform(object):
 
 class FeatureTree(object):
     def __call__(self, data):
+
+        '''
         mol = mol_from_data(data)
         out = tree_decomposition(mol, return_vocab=True)
-
         data = ReducedGraphData(**{k: v for k, v in data})
         data.node_feat = data.x # Compatibility w/ EHimp TODO adhere to naming convention
         data.edge_feat = data.edge_attr # Compatibility EHimp
@@ -78,7 +80,44 @@ class FeatureTree(object):
         resolution=2 #TODO make config param
         for i in range(0, resolution):
             data = getFeatureTreeWithLowerResolution(data, i+1) #i here is just for naming the attributes
+        '''
+        # Generate ErG fingerprint
+        #mol = Chem.MolFromSmiles(data.smiles)
+        mol = mol_from_data(data) #Is the resulting graph surely identical as if we use mol_from_data?
+        #print(data.smiles, '\n', Chem.MolToSmiles(mol), '\n\n\n\n', flush=True)
+        Chem.SanitizeMol(mol, Chem.SanitizeFlags.SANITIZE_ALL ^ Chem.SanitizeFlags.SANITIZE_PROPERTIES)
 
+        #mol.UpdatePropertyCache(strict=False) # Should work now without error
+
+        erg_fp = GenerateMolExtendedReducedGraph(mol)
+
+        erg_num_atoms = erg_fp.GetNumAtoms()
+
+        # Construct ErG features and edges
+        atom_features, erg_edge_index, num_of_rings = constructErgFromFp(erg_fp)
+
+        # Find atoms with specific properties in the molecule
+        atoms_with_properties = moleculeAtomsProperties(mol)
+        atoms_with_properties_flattened = np.unique(
+            np.array([index for tpl in atoms_with_properties for index in tpl]).flatten())
+
+        # Create mapping for ErG
+        erg_mapping, unmapped = createErgMapping(mol, num_of_rings, erg_num_atoms, atoms_with_properties_flattened)
+
+        if unmapped:
+            # If there are unmapped atoms, insert and artificall node
+            erg_num_atoms += 1
+            atom_features = np.append(atom_features, 7)
+
+        # Transform ErG graph into ReducedGraphData
+        data = ReducedGraphData(**{k: v for k, v in data})
+        data.node_feat = data.x  # Compatibility w/ EHimp TODO adhere to naming convention
+        data.edge_feat = data.edge_attr  # Compatibility EHimp
+        data.rg_edge_index_0 = torch.from_numpy(erg_edge_index)
+        data.mapping_0 = torch.from_numpy(erg_mapping)
+        data.rg_atom_features_0 = torch.from_numpy(atom_features)
+        data.rg_num_atoms_0 = torch.tensor(erg_num_atoms, dtype=torch.int64)
+        data.raw_num_atoms_0 = data.x.size(0)
         return data
 class ReducedGraphData(Data):
     """
@@ -112,33 +151,6 @@ class ReducedGraphData(Data):
             return torch.tensor([[torch.sum(getattr(self, f'raw_num_atoms_{idx}'))], [getattr(self, f'rg_num_atoms_{idx}')]])
         else:
             return super().__inc__(key, value, *args, **kwargs)
-
-
-def getFeatureTreeData(molecule, num_of_nodes, resolution=0): # Construction reminiscent of HIMP junction trees.
-    """
-    Get data for the Feature Tree (FT) from a given molecule with a specified resolution.
-
-    Parameters:
-        - molecule (Chem.rdchem.Mol): RDKit Mol object representing a molecule.
-        - num_of_nodes (int): Number of nodes in the raw graph.
-        - resolution (int): Resolution level for the Feature Tree. Use 0 for standard FT.
-
-    Returns:
-        - data (ReducedGraphData): Data for the FT in the form of ReducedGraphData, including features and mapping.
-    """
-
-    out = tree_decomposition(molecule, return_vocab=True)
-
-    data = ReducedGraphData()
-    data.rg_edge_index, data.mapping, data.rg_num_atoms, data.rg_atom_features = out
-    data.raw_num_atoms = num_of_nodes
-
-    # Recursively get FT with lower resolution if specified
-    for _ in range(resolution):
-        data = getFeatureTreeWithLowerResolution(data)
-
-    return data
-
 
 def getFeatureTreeWithLowerResolution(tree, resolution=1):
 
@@ -204,3 +216,226 @@ def mol_with_atom_index(mol):
     return mol
 
 
+def moleculeAtomsProperties(molecule):
+    """
+    Extracts atom properties from a given RDKit Mol object using SMARTS patterns.
+
+    Parameters:
+        - molecule (Chem.rdchem.Mol): RDKit Mol object representing a molecule.
+
+    Returns:
+        - properties (numpy.ndarray): Array containing tuples representing atom properties.
+          Each tuple indicates the atom indices that match specific chemical patterns.
+          The order of patterns corresponds to the following:
+          0: Donor atoms
+          1: Acceptor atoms
+          2: Positively charged atoms
+          3: Negatively charged atoms
+          4: Hydrophobic atoms
+    """
+
+    # Define SMARTS patterns for different atom properties
+    donor_pattern = Chem.MolFromSmarts(r'[$([N;!H0;v3,v4&+1]),$([O,S;H1;+0]),n&H1&+0]')
+    acceptor_pattern = Chem.MolFromSmarts(r'[$([O,S;H1;v2;!$(*-*=[O,N,P,S])]),$([O;H0;v2]),$([O,S;v1;-]),$([N;v3;!$(N-*=[O,N,P,S])]),n&H0&+0,$([o;+0;!$([o]:n);!$([o]:c:n)])]')
+    positive_pattern = Chem.MolFromSmarts(r'[#7;+,$([N;H2&+0][$([C,a]);!$([C,a](=O))]),$([N;H1&+0]([$([C,a]);!$([C,a](=O))])[$([C,a]);!$([C,a](=O))]),$([N;H0&+0]([C;!$(C(=O))])([C;!$(C(=O))])[C;!$(C(=O))])]')
+    negative_pattern = Chem.MolFromSmarts(r'[$([C,S](=[O,S,P])-[O;H1,-1])]')
+    hydrophobic_pattern = Chem.MolFromSmarts(r'[$([C;D3,D4](-[CH3])-[CH3]),$([S;D2](-C)-C)]')
+
+    # Array to store atom properties
+    properties = np.empty(5, dtype=tuple)
+
+    # List of SMARTS patterns
+    atom_property_patterns = [donor_pattern, acceptor_pattern, positive_pattern, negative_pattern, hydrophobic_pattern]
+
+    # Check if the atom matches any of the specified patterns
+    for i, pattern in enumerate(atom_property_patterns):
+        properties[i] = molecule.GetSubstructMatches(pattern)
+
+    return properties
+
+
+def findRecognizedRings(mol):
+    """
+    Finds rings in a molecule with a ring size less than 8.
+
+    Parameters:
+        - mol (Chem.rdchem.Mol): RDKit Mol object representing a molecule.
+
+    Returns:
+        - recognized_rings (list): List of atom indices representing rings in the molecule.
+          Only rings with a size (number of atoms) less than 8 are included in the result.
+    """
+    recognized_rings = [ring for ring in mol.GetRingInfo().AtomRings() if len(ring) < 8]
+    return recognized_rings
+
+def constructErgFromFp(erg_fp):
+    """
+    Construct an ErG (Extended Graph) from a given fingerprint.
+
+    Parameters:
+        - erg_fp (Chem.AllChem.GetErGFingerprint): ErG fingerprint obtained using RDKit.
+
+    Returns:
+        - atom_features (numpy.ndarray): Array of atom features:
+            - 0: No feature
+            - [1, 2, 3, 4, 5, 6]: Specific feature
+            - 7: Newly introduced node
+        - erg_edge_index (numpy.ndarray): Array of edges of ErG.
+        - num_of_rings (int): Number of rings in the ErG.
+    """
+
+    # Array of atom features
+    # 0: No feature, [1, 2, 3, 4, 5, 6]: Specific feature, 7: Newly introduced node
+    atom_features = np.zeros(erg_fp.GetNumAtoms(), dtype=int)
+
+    # Array of edges of ErG
+    erg_edge_index = np.empty((2, 2 * erg_fp.GetNumBonds()), dtype=int)
+
+    num_of_rings = 0
+    edge_count = 0
+
+    for i, atom in enumerate(erg_fp.GetAtoms()):
+        # Assign features to atoms and edges and construct a graph
+        if atom.GetSymbol() == "*":
+            num_of_rings += 1
+
+        for prop in atom.GetProp('_ErGAtomTypes'):
+            if prop in ['0', '1', '2', '4', '5', '3']:
+                atom_features[i] = int(prop) + 1
+
+        for bond in atom.GetBonds():
+            # Construct edges of a graph
+            erg_edge_index[0, edge_count] = i
+            if i == bond.GetBeginAtomIdx():
+                erg_edge_index[1, edge_count] = bond.GetEndAtomIdx()
+            else:
+                erg_edge_index[1, edge_count] = bond.GetBeginAtomIdx()
+
+            edge_count += 1  # Each edge is counted twice
+
+    return atom_features, erg_edge_index, num_of_rings
+
+
+
+def createErgRingMapping(molecule, erg_num_atoms, num_of_rings):
+    """
+    Create ring mapping from the original graph to ErG.
+
+    Parameters:
+        - molecule (Chem.rdchem.Mol): RDKit Mol object representing a molecule.
+        - erg_num_atoms (int): Number of atoms of ErG
+        - num_of_rings (int): Number of rings in the molecule.
+
+    Returns:
+        - rings_map (numpy.ndarray): Array with two rows representing the mapping of nodes of the original graph to rings in ErG.
+          The first row contains indices of atoms from the original graph mapped to a ring atoms of ErG.
+          The second row contains indices of the corresponding ring nodes in the resulting ErG.
+    """
+    recognized_rings = findRecognizedRings(molecule)
+
+    cumulative_ring_sizes = np.append(0, np.cumsum(list(map(len, recognized_rings))))
+
+    rings_map = np.empty((2, int(cumulative_ring_sizes[-1])), dtype=int)
+    rings_map_idx = 0
+
+    for i, ring in enumerate(recognized_rings):
+        idcs = np.arange(cumulative_ring_sizes[i], cumulative_ring_sizes[i + 1])
+        rings_map[0, idcs] = ring
+
+         # Nodes of ErG representing rings are inserted at the end of the list of nodes
+        rings_map[1, idcs] = erg_num_atoms - num_of_rings + i
+
+    return rings_map
+
+
+
+def createErgMapping(molecule, num_of_rings, erg_num_atoms, atoms_with_properties_flattened):
+    """
+    Create a mapping for the Extended Graph (ErG) from a given molecule.
+
+    Parameters:
+        - molecule (Chem.rdchem.Mol): RDKit Mol object representing a molecule.
+        - num_of_rings (int): Number of rings in the molecule.
+        - erg_num_atoms (int): Number of atoms in the resulting ErG.
+        - atoms_with_properties_flattened (list): List of atom indices with specific properties.
+
+    Returns:
+        - erg_mapping (numpy.ndarray): Array representing the mapping of atoms to ErG.
+            - The first row contains indices of atoms from the original graph mapped to ErG atoms.
+            - The second row contains indices of the corresponding ErG atoms.
+        - unmapped (bool): Flag denoting if some atoms of raw graph are not mapped to any ErG node
+    """
+
+    # Create a mapping for atoms that are part of recognized rings
+    rings_map = createErgRingMapping(molecule, erg_num_atoms, num_of_rings)
+
+    # Mapping for atoms with specific properties
+    prop_map = np.empty((2, molecule.GetNumAtoms()), dtype=int)
+    prop_map_idx = 0
+
+    # Mapping for unmapped atoms that are part of rings of length >= 8 and don't have specific properties
+    unmapped = False
+    unmapped_map = np.empty((2, molecule.GetNumAtoms()), dtype=int)
+    unm_map_idx = 0
+
+    for i, atom in enumerate(molecule.GetAtoms()):
+        if not atom.IsInRing() or atom.GetDegree() != 2 or i in atoms_with_properties_flattened:
+            # Atoms with specific properties
+            prop_map[0, prop_map_idx] = i
+            prop_map[1, prop_map_idx] = prop_map_idx
+            prop_map_idx += 1
+        elif molecule.GetRingInfo().MinAtomRingSize(i) >= 8:
+             # Atoms without specific properties that are part of rings of length >= 8 are not mapped to any ErG atom.
+             # All those atoms are mapped to and artifically introduced node of ErG with feature 7.
+            unmapped_map[0, unm_map_idx] = i
+            unmapped_map[1, unm_map_idx] = erg_num_atoms
+            unm_map_idx += 1
+            unmapped = True
+
+    # Concatenate mappings
+    erg_mapping = np.concatenate((prop_map[:, :prop_map_idx], rings_map, unmapped_map[:, :unm_map_idx]), axis=1)
+
+    return erg_mapping, unmapped
+
+
+def getErGData(molecule, num_of_nodes):
+    """
+    Get data for the Extended Reduced Graph (ErG) from a given molecule.
+
+    Parameters:
+        - molecule (Chem.rdchem.Mol): RDKit Mol object representing a molecule.
+        - num_of_nodes (int): Number of nodes in the raw graph.
+
+    Returns:
+        - data (ReducedGraphData): Data for the ErG in the form of ReducedGraphData, containing features and mapping.
+    """
+
+    # Generate ErG fingerprint
+    erg_fp = GenerateMolExtendedReducedGraph(molecule)
+    erg_num_atoms = erg_fp.GetNumAtoms()
+
+    # Construct ErG features and edges
+    atom_features, erg_edge_index, num_of_rings = constructErgFromFp(erg_fp)
+
+    # Find atoms with specific properties in the molecule
+    atoms_with_properties = moleculeAtomsProperties(molecule)
+    atoms_with_properties_flattened = np.unique(np.array([index for tpl in atoms_with_properties for index in tpl]).flatten())
+
+    # Create mapping for ErG
+    erg_mapping, unmapped = createErgMapping(molecule, num_of_rings, erg_num_atoms, atoms_with_properties_flattened)
+
+    if unmapped:
+        # If there are unmapped atoms, insert and artificall node
+        erg_num_atoms += 1
+        atom_features = np.append(atom_features, 7)
+
+    # Transform ErG graph into ReducedGraphData
+    data = ReducedGraphData()
+    data.rg_edge_index = torch.from_numpy(erg_edge_index)
+    data.mapping = torch.from_numpy(erg_mapping)
+    data.rg_atom_features = torch.from_numpy(atom_features)
+    data.rg_num_atoms = torch.tensor(erg_num_atoms, dtype=torch.int64)
+    data.raw_num_atoms = num_of_nodes
+
+
+    return data

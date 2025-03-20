@@ -66,7 +66,7 @@ class EHimp(torch.nn.Module):
 
     """
     def __init__(self, hidden_channels, out_channels, num_layers, dropout=0.0,
-                 rg_num=3, nums_of_features=[8,8,8], device='cpu', use_raw=True, inter_message_passing=True): #TODO Hyperparameters need either be infered or  go in config
+                 rg_num=1, nums_of_features=[8], device='cpu', use_raw=True, inter_message_passing=True): #TODO Hyperparameters need either be infered or  go in config
         """
         Constructor for NetCustom.
 
