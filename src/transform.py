@@ -65,59 +65,30 @@ class OGBTransform(object):
         data.edge_attr[:, 0] += 1
         return data
 
-class FeatureTree(object):
-    def __call__(self, data):
+class ReducedGraph(object):
+    def __call__(self, data, erg = True, ft = True, resolution=2):
+        offset = 0
+        if ft:
+            mol = Chem.MolFromSmiles(data.smiles)
+            out = tree_decomposition(mol, return_vocab=True)
+            data = ReducedGraphData(**{k: v for k, v in data})
+            data.node_feat = data.x # Compatibility w/ EHimp TODO adhere to naming convention
+            data.edge_feat = data.edge_attr # Compatibility EHimp
+            data.rg_edge_index_0, data.mapping_0, data.rg_num_atoms_0, data.rg_atom_features_0 = out
+            data.raw_num_atoms_0 = data.x.size(0)
 
-        '''
-        mol = mol_from_data(data)
-        out = tree_decomposition(mol, return_vocab=True)
-        data = ReducedGraphData(**{k: v for k, v in data})
-        data.node_feat = data.x # Compatibility w/ EHimp TODO adhere to naming convention
-        data.edge_feat = data.edge_attr # Compatibility EHimp
-        data.rg_edge_index_0, data.mapping_0, data.rg_num_atoms_0, data.rg_atom_features_0 = out
-        data.raw_num_atoms_0 = data.x.size(0)
-
-        resolution=2 #TODO make config param
-        for i in range(0, resolution):
-            data = getFeatureTreeWithLowerResolution(data, i+1) #i here is just for naming the attributes
-        '''
-        # Generate ErG fingerprint
-        #mol = Chem.MolFromSmiles(data.smiles)
-        mol = mol_from_data(data) #Is the resulting graph surely identical as if we use mol_from_data?
-        #print(data.smiles, '\n', Chem.MolToSmiles(mol), '\n\n\n\n', flush=True)
-        Chem.SanitizeMol(mol, Chem.SanitizeFlags.SANITIZE_ALL ^ Chem.SanitizeFlags.SANITIZE_PROPERTIES)
-
-        #mol.UpdatePropertyCache(strict=False) # Should work now without error
-
-        erg_fp = GenerateMolExtendedReducedGraph(mol)
-
-        erg_num_atoms = erg_fp.GetNumAtoms()
-
-        # Construct ErG features and edges
-        atom_features, erg_edge_index, num_of_rings = constructErgFromFp(erg_fp)
-
-        # Find atoms with specific properties in the molecule
-        atoms_with_properties = moleculeAtomsProperties(mol)
-        atoms_with_properties_flattened = np.unique(
-            np.array([index for tpl in atoms_with_properties for index in tpl]).flatten())
-
-        # Create mapping for ErG
-        erg_mapping, unmapped = createErgMapping(mol, num_of_rings, erg_num_atoms, atoms_with_properties_flattened)
-
-        if unmapped:
-            # If there are unmapped atoms, insert and artificall node
-            erg_num_atoms += 1
-            atom_features = np.append(atom_features, 7)
-
-        # Transform ErG graph into ReducedGraphData
-        data = ReducedGraphData(**{k: v for k, v in data})
-        data.node_feat = data.x  # Compatibility w/ EHimp TODO adhere to naming convention
-        data.edge_feat = data.edge_attr  # Compatibility EHimp
-        data.rg_edge_index_0 = torch.from_numpy(erg_edge_index)
-        data.mapping_0 = torch.from_numpy(erg_mapping)
-        data.rg_atom_features_0 = torch.from_numpy(atom_features)
-        data.rg_num_atoms_0 = torch.tensor(erg_num_atoms, dtype=torch.int64)
-        data.raw_num_atoms_0 = data.x.size(0)
+            for i in range(0, resolution):
+                data = addFeatureTreeWithLowerResolution(data, i + 1) #i here is just for naming the attributes
+            offset = resolution + 1
+        if erg:
+            # Generate ErG fingerprint
+            mol = Chem.MolFromSmiles(data.smiles)
+            erg = getErGData(mol, data.x.size(0))
+            setattr(data, f'rg_edge_index_{offset}', erg.rg_edge_index)
+            setattr(data, f'mapping_{offset}', erg.mapping)
+            setattr(data, f'rg_num_atoms_{offset}', erg.rg_num_atoms)
+            setattr(data, f'rg_atom_features_{offset}', erg.rg_atom_features)
+            setattr(data, f'raw_num_atoms_{offset}', data.x.size(0))
         return data
 class ReducedGraphData(Data):
     """
@@ -152,7 +123,7 @@ class ReducedGraphData(Data):
         else:
             return super().__inc__(key, value, *args, **kwargs)
 
-def getFeatureTreeWithLowerResolution(tree, resolution=1):
+def addFeatureTreeWithLowerResolution(tree, resolution=1):
 
     rg_edge_index = getattr(tree, f'rg_edge_index_{resolution-1}')
     rg_num_atoms  = getattr(tree, f'rg_num_atoms_{resolution-1}')

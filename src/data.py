@@ -9,7 +9,7 @@ import torch
 from torch_geometric.data import Data, InMemoryDataset
 from torch_geometric.utils import from_smiles
 
-from src.transform import JunctionTree, FeatureTree
+from src.transform import JunctionTree, ReducedGraph
 from src.utils import scaffold_split
 
 # Ignore FutureWarnings from torch.load about weightsOnly bool != True
@@ -31,7 +31,7 @@ class PolarisDataset(InMemoryDataset):
         self.train = train
         self.log_transform = log_transform
         self.junctionTree = JunctionTree()
-        self.featureTree = FeatureTree()
+        self.featureTree = ReducedGraph()
 
         if task == "admet":
             self.target_col = self._admet_target_to_col_mapping(target_task)
