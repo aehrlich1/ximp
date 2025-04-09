@@ -18,7 +18,7 @@ from src.utils import (
     make_combinations,
     save_dict_to_csv,
     scaffold_split,
-    ScaffoldKFold
+    ScaffoldKFold,
 )
 
 
@@ -50,13 +50,13 @@ class Polaris:
         labels = self.train_scaffold.y.view(-1).tolist()
 
         y_binned = pd.qcut(labels, q=self.params["num_cv_bins"], labels=False)
-        # skf = StratifiedKFold(n_splits=self.params["num_cv_folds"], shuffle=True, random_state=42)
-        scaffold_kfold = ScaffoldKFold(n_splits=5, shuffle=True, random_state=42)
+        skf = StratifiedKFold(n_splits=self.params["num_cv_folds"], shuffle=True, random_state=42)
+        # scaffold_kfold = ScaffoldKFold(n_splits=5, shuffle=True, random_state=42)
 
         # print("Running K-Fold CV...")
         val_loss_list = []
 
-        for train_idx, valid_idx in scaffold_kfold.split(smiles, y_binned):
+        for train_idx, valid_idx in skf.split(smiles, y_binned):
             self._init_model()  # Reinitialize model
             self._init_optimizer()
             self.performance_tracker.reset()
@@ -146,9 +146,9 @@ class Polaris:
             train=True,
             log_transform=log_transform,
             force_reload=False,
-            use_erg = self.params['use_erg'],
-            use_ft = self.params['use_ft'],
-            ft_resolution = self.params['ft_resolution']
+            use_erg=self.params["use_erg"],
+            use_ft=self.params["use_ft"],
+            ft_resolution=self.params["ft_resolution"],
         )
         self.test_polaris = PolarisDataset(
             root=root,
@@ -157,9 +157,9 @@ class Polaris:
             train=False,
             log_transform=log_transform,
             force_reload=False,
-            use_erg=self.params['use_erg'],
-            use_ft=self.params['use_ft'],
-            ft_resolution=self.params['ft_resolution']
+            use_erg=self.params["use_erg"],
+            use_ft=self.params["use_ft"],
+            ft_resolution=self.params["ft_resolution"],
         )
 
         self.train_scaffold, self.test_scaffold = scaffold_split(
@@ -243,14 +243,11 @@ class PolarisDispatcher:
                 f"Estimated time to completion: {format_time_readable(estimated_secs_to_complete)}"
             )
 
-            with Pool(processes=None) as pool:
+            with Pool(processes=32) as pool:
                 for params in params_list:
                     pool.apply_async(
                         self.worker,
-                        (
-                            params,
-                            queue,
-                        ),
+                        (params, queue),
                         callback=update_progress,
                         error_callback=lambda e: print(e),
                     )

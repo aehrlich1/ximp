@@ -1,10 +1,10 @@
-task: "potency"
-target_task: ["pIC50 (MERS-CoV Mpro)" , "pIC50 (SARS-CoV-2 Mpro)"]
+task: "admet"
+target_task: ["MLM", "HLM", "KSOL", "LogD", "MDR1-MDCKII"]
 
 # Learning params
 batch_size: [8, 16, 32]
 epochs: 500
-lr: [1.0e-4, 1.0e-3]
+lr: [1.0e-4] #, 1.0e-3]
 weight_decay: [0.0, 1.0e-4]
 
 # Cross validation params
@@ -16,13 +16,13 @@ scaffold_split_val_sz : 0.1
 repr_model: "EHIMP"
 use_erg: True
 use_ft: True
-ft_resolution: [5] #, 10]
+ft_resolution: [2] #, 10]
 rg_embedding_dim: [8, 16] #, 16] # Actually this is also an encoder and could be renamed
 
 hidden_channels: [32, 64]
 out_channels: [64, 128]
 num_layers: [3, 4]
-dropout: [0.1] #, 0.3]
+dropout: [0.1, 0.3]
 
 # Projection head model params
 # latent_dim: *out_channels
