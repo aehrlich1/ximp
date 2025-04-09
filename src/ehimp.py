@@ -165,6 +165,13 @@ class EHimp(torch.nn.Module):
         for i in range(rg_num):
             self.rg_lins.append(Linear(hidden_channels, hidden_channels)).to(device)
 
+        # For inter-message passing between reduced graphs
+        self.rg2rg_lins = ModuleList()
+        for i in range(num_layers):
+            for j in range(self.rg_num):
+                for k in range(j + 1, self.rg_num):
+                    self.rg2rg_lins.append(Linear(hidden_channels, hidden_channels)).to(device) # one for each direction
+                    self.rg2rg_lins.append(Linear(hidden_channels, hidden_channels)).to(device)
     def __collect_rg_from_data(self, data):
         """
         Collect reduced graph data from data object.
@@ -212,14 +219,35 @@ class EHimp(torch.nn.Module):
                 x = self.atom_batch_norms[i](x)
                 x = F.relu(x)
                 x = F.dropout(x, self.dropout, training=self.training)
+
+            # Inter message passing between reduced graphs
+            if self.inter_message_passing:
+                for j in range(self.rg_num):
+                    for k in range(j+1, self.rg_num):
+                            rg_j = rgs[j]
+                            rg_k = rgs[k]
+                            row_j, col_j = reduced_graphs[j].mapping
+                            row_k, col_k = reduced_graphs[k].mapping
+
+                            # Indexing for rg2rg transform selection
+                            pairs_per_layer = self.rg_num * (self.rg_num - 1) // 2
+                            local_index = j * (rg_num - 1) - (j * (j - 1)) // 2 + (k - j - 1) + 1
+                            global_index_j = i * (pairs_per_layer * 2) - 1
+                            global_index_k = global_index_j + (local_index - 1) * 2 + 1
+
+                            # With virtual nodes
+                            x_virt_j = scatter(rg_j[col_j], row_j, dim=0, dim_size=x.size(0), reduce='mean')
+                            x_virt_k = scatter(rg_k[col_k], row_k, dim=0, dim_size=x.size(0), reduce='mean')
+                            rgs[j] += self.rg2rg_lins[global_index_j](scatter(x_virt_k[row_j], col_j, dim=0, dim_size=rg_j.size(0), reduce='mean')).relu()
+                            rgs[k] += self.rg2rg_lins[global_index_k](scatter(x_virt_j[row_k], col_k, dim=0, dim_size=rg_k.size(0), reduce='mean')).relu()
+
             # GNN layers for reduced graphs
             for j in range(self.rg_num):
                 row, col = reduced_graphs[j].mapping
                 rg = rgs[j]
 
                 if self.inter_message_passing:
-                    rg = rg + F.relu(self.raw2rg_lins[j][i](scatter(x[row], col,
-                                    dim=0, dim_size=rg.size(0), reduce='mean')))
+                    rg = rg + F.relu(self.raw2rg_lins[j][i](scatter(x[row], col, dim=0, dim_size=rg.size(0), reduce='mean')))
 
                 rg = self.rg_convs[j][i](rg, reduced_graphs[j].rg_edge_index)
                 rg = self.rg_batch_norms[j][i](rg)
@@ -227,9 +255,7 @@ class EHimp(torch.nn.Module):
                 rg = F.dropout(rg, self.dropout, training=self.training)
 
                 if self.inter_message_passing:
-                    x = x + F.relu(self.rg2raw_lins[j][i](scatter(
-                        rg[col], row, dim=0, dim_size=x.size(0),
-                        reduce='mean')))
+                    x = x + F.relu(self.rg2raw_lins[j][i](scatter(rg[col], row, dim=0, dim_size=x.size(0), reduce='mean')))
 
         # Aggregation for raw graph
         if self.use_raw:
