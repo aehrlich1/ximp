@@ -168,9 +168,20 @@ def addFeatureTreeWithLowerResolution(tree, resolution=1):
 
         new_mapping[1, new_mapping[1] == leaf] = parent  # Map nodes that are mapped to the leaf to its parent
 
+        # Original
         if new_rg_atom_features[leaf] < new_rg_atom_features[parent]:  # Change the feature attribute it needed
             new_rg_atom_features[parent] = new_rg_atom_features[leaf].to(torch.int64)
 
+        # Hashing (summation not meaningful as we use indices of embeddings dictionary)
+        #print(new_rg_atom_features, leaf, parent, flush=True)
+        #def hash_pairwise(a: torch.Tensor, b: torch.Tensor, k: int) -> torch.Tensor:
+        #    p1, p2 = 31, 77 # Primes, ideally chosen st they are coprime with k (i.e. they hsare no commong factor but 1 with k) - gives best distribution.
+        #    #p1, p2 = 31, 77 (but also 3 and 7) would be coprime to 100
+        #    return torch.abs(a * p1 + b * p2) % k
+
+        #new_rg_atom_features[parent] = hash_pairwise(new_rg_atom_features[leaf], new_rg_atom_features[parent], 1000).to(torch.int64)
+
+        #exit(-1)
     # Delete multiple occurences
     new_mapping, _ = torch.unique(new_mapping, dim=1, return_inverse=True)
 

@@ -2,11 +2,10 @@ task: "potency"
 target_task: ["pIC50 (MERS-CoV Mpro)" , "pIC50 (SARS-CoV-2 Mpro)"]
 
 # Learning params
-batch_size: [16, 32] #, 64]
+batch_size: [8, 16, 32]
 epochs: 500
-# lr: [1.0e-5, 1.0e-4, 1.0e-3]
-lr: [1.0e-3]
-weight_decay: [0.0] #, 1.0e-4, 1.0e-5]
+lr: [1.0e-4, 1.0e-3]
+weight_decay: [0.0, 1.0e-4]
 
 # Cross validation params
 num_cv_folds: 5

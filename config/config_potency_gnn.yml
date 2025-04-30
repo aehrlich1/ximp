@@ -4,8 +4,8 @@ target_task: ["pIC50 (MERS-CoV Mpro)" , "pIC50 (SARS-CoV-2 Mpro)"]
 # Learning params
 batch_size: [8, 16, 32]
 epochs: 500
-lr: [1.0e-4] #, 1.0e-3]
-weight_decay: [0.0] #, 1.0e-4]
+lr: [1.0e-4, 1.0e-3]
+weight_decay: [0.0, 1.0e-4]
 
 # Cross validation params
 num_cv_folds: 5
@@ -17,12 +17,12 @@ encoding_dim: [8, 16]
 
 # Representation model params
 repr_model: ["GIN", "GCN", "GAT", "GraphSAGE", "HIMP"]
-hidden_channels: [32] #, 64]
-out_channels: [64] #, 128]
-num_layers: [2] #, 3, 4]
-dropout: [0.1] #, 0.3]
+hidden_channels: [32, 64]
+out_channels: [64, 128]
+num_layers: [2, 3, 4]
+dropout: [0.0, 0.1, 0.3]
 
 # Projection head model params
 # latent_dim: *out_channels
-proj_hidden_dim: [64] #, 128]
+proj_hidden_dim: [64, 128] #, 128]
 out_dim: 1

@@ -2,7 +2,7 @@ task: "admet"
 target_task: ["MLM", "HLM", "KSOL", "LogD", "MDR1-MDCKII"]
 
 # Learning params
-batch_size: [16, 32]
+batch_size: [8, 16, 32]
 epochs: 500
 lr: [1.0e-4, 1.0e-3]
 weight_decay: [0.0, 1.0e-4]

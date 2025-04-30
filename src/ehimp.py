@@ -20,7 +20,7 @@ class AtomEncoder(torch.nn.Module):
         self.embeddings = torch.nn.ModuleList()
 
         for i in range(9):
-            emb = Embedding(100, hidden_channels)
+            emb = Embedding(100, hidden_channels) # was 100, increased for the hashing thing
             torch.nn.init.xavier_uniform_(emb.weight.data)
             self.embeddings.append(emb)
 

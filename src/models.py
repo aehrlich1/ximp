@@ -266,6 +266,7 @@ class ECFPModel(nn.Module):
     def __init__(self, radius: int, fpSize: int):
         super().__init__()
         self.fpgen = AllChem.GetMorganGenerator(radius=radius, fpSize=fpSize)
+        #print(self.fpgen.GetInfoString(), flush=True)
 
     def forward(self, data):
         mols = [Chem.MolFromSmiles(smiles) for smiles in data.smiles]

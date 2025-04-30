@@ -138,6 +138,9 @@ class Polaris:
         root = Path("./data") / "polaris" / self.params["task"]
 
         log_transform = True if self.params["task"] == "admet" else False
+        use_erg = self.params["use_erg"] if 'use_erg' in self.params else False
+        use_ft = self.params["use_ft"] if 'use_ft' in self.params else False
+        ft_resolution = self.params["ft_resolution"] if 'ft_resolution' in self.params else 0
 
         self.train_polaris = PolarisDataset(
             root=root,
@@ -146,9 +149,9 @@ class Polaris:
             train=True,
             log_transform=log_transform,
             force_reload=False,
-            use_erg=self.params["use_erg"],
-            use_ft=self.params["use_ft"],
-            ft_resolution=self.params["ft_resolution"],
+            use_erg=use_erg,
+            use_ft=use_ft,
+            ft_resolution=ft_resolution,
         )
         self.test_polaris = PolarisDataset(
             root=root,
@@ -157,9 +160,9 @@ class Polaris:
             train=False,
             log_transform=log_transform,
             force_reload=False,
-            use_erg=self.params["use_erg"],
-            use_ft=self.params["use_ft"],
-            ft_resolution=self.params["ft_resolution"],
+            use_erg=use_erg,
+            use_ft=use_ft,
+            ft_resolution=ft_resolution,
         )
 
         self.train_scaffold, self.test_scaffold = scaffold_split(
@@ -228,7 +231,7 @@ class PolarisDispatcher:
             queue = manager.Queue()
 
             params_list: list[dict] = make_combinations(self.params)
-            processes = 64
+            processes = 12
 
             def update_progress(_):
                 with lock:
@@ -243,7 +246,7 @@ class PolarisDispatcher:
                 f"Estimated time to completion: {format_time_readable(estimated_secs_to_complete)}"
             )
 
-            with Pool(processes=32) as pool:
+            with Pool(processes=12) as pool:
                 for params in params_list:
                     pool.apply_async(
                         self.worker,
