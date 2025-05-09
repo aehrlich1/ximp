@@ -6,6 +6,7 @@ import csv
 import warnings
 
 import torch
+from torch_geometric.datasets import MoleculeNet
 from torch_geometric.data import Data, InMemoryDataset
 from torch_geometric.utils import from_smiles
 
@@ -15,6 +16,42 @@ from src.utils import scaffold_split
 # Ignore FutureWarnings from torch.load about weightsOnly bool != True
 warnings.simplefilter("ignore", category=FutureWarning)
 warnings.simplefilter("ignore", category=UserWarning)
+
+
+class MoleculeNetDataset:
+    def __init__(
+        self,
+        root,
+        target_task,
+        force_reload=False,
+        use_erg=False,
+        use_ft=False,
+        ft_resolution=0,
+    ):
+        self.root = root
+        self.target_task = target_task
+        self.force_reload = force_reload
+        self.junction_tree = JunctionTree()
+        self.reduced_graph = ReducedGraph(
+            use_erg=use_erg, use_ft=use_ft, ft_resolution=ft_resolution
+        )
+        self.use_himp_preprocessing = not (use_ft or use_erg)
+
+    def _pre_transform(self, data):
+        if self.use_himp_preprocessing:
+            data = self.junction_tree(data)  # HIMP Graph
+        else:
+            data = self.reduced_graph(data)  # Extended IMP Graphs
+
+        return data
+
+    def create_dataset(self):
+        return MoleculeNet(
+            root=self.root,
+            name=self.target_task,
+            transform=self._pre_transform,
+            force_reload=self.force_reload,
+        )
 
 
 class PolarisDataset(InMemoryDataset):
@@ -28,10 +65,11 @@ class PolarisDataset(InMemoryDataset):
         log_transform=True,
         use_erg=False,
         use_ft=False,
-        ft_resolution=0
+        ft_resolution=0,
     ):
         self.target_task = target_task
         self.train = train
+        self.force_reload = force_reload
         self.log_transform = log_transform
         self.junctionTree = JunctionTree()
         self.use_himp_preprocessing = not(use_ft or use_erg)
@@ -44,7 +82,7 @@ class PolarisDataset(InMemoryDataset):
         else:
             raise ValueError(f"Unknown task: {task}")
 
-        super().__init__(root, force_reload=True)
+        super().__init__(root, force_reload=force_reload)
         self.load(self.processed_paths[0] if train else self.processed_paths[1])
 
     @property

@@ -252,6 +252,11 @@ def save_dict_to_csv(data: list[dict], output_path: Path):
         writer.writerows(data)
 
 
+def save_dict_to_yaml(data: dict, output_path: Path):
+    with open(output_path, "w") as f:
+        yaml.dump(data, f)
+
+
 def format_time_readable(seconds):
     hours = seconds // 3600
     minutes = (seconds % 3600) // 60

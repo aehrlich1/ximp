@@ -1,0 +1,34 @@
+task: "molecule_net"
+target_task: ["ESOL", "Lipo", "FreeSolv"]
+processes: 64
+
+# Learning params
+batch_size: [16, 32]
+epochs: 500
+lr: [1.0e-4, 1.0e-3]
+weight_decay: [0.0, 1.0e-4]
+
+# Cross validation params
+num_cv_folds: 5
+num_cv_bins: 10
+scaffold_split_val_sz : 0.1
+
+# Encoder model params
+encoding_dim: [8, 16]
+
+# Representation model params
+repr_model: ["GIN", "GCN", "GAT", "GraphSAGE", "HIMP"]
+hidden_channels: [32, 64]
+out_channels: [64, 128]
+num_layers: [2, 3, 4]
+dropout: [0.1, 0.3]
+
+# Fix Lorenz Implementation
+use_erg: False
+use_ft: False
+ft_resolution: 0
+
+# Projection head model params
+# latent_dim: *out_channels
+proj_hidden_dim: [64, 128]
+out_dim: 1

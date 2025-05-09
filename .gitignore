@@ -18,4 +18,7 @@ __pycache__
 /data/polaris/admet/processed
 /data/polaris/potency/processed
 
+# Ignore MoleculeNet dataset files
+/data/molecule_net
+
 results/

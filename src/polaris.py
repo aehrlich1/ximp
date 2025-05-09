@@ -1,24 +1,27 @@
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from sklearn.metrics import mean_absolute_error
 import torch
+from sklearn.metrics import mean_absolute_error
 from sklearn.model_selection import StratifiedKFold
 from torch import nn
 from torch.multiprocessing import Manager, Pool
-from torch.optim import Adam
+from torch.optim import Adam, Optimizer
+from torch_geometric.data import InMemoryDataset
 from torch_geometric.loader import DataLoader
 
-from src.data import PolarisDataset
+from src.data import MoleculeNetDataset, PolarisDataset
 from src.models import PolarisModel, create_proj_model, create_repr_model
 from src.utils import (
     PerformanceTracker,
+    ScaffoldKFold,
     format_time_readable,
     make_combinations,
     save_dict_to_csv,
+    save_dict_to_yaml,
     scaffold_split,
-    ScaffoldKFold,
 )
 
 
@@ -28,13 +31,13 @@ class Polaris:
         self.queue = queue
         self.performance_tracker = PerformanceTracker(Path("./models"), id_run="x")
         self.device: str = "cpu"
-        self.train_polaris = None
-        self.test_polaris = None
-        self.train_scaffold = None
-        self.test_scaffold = None
-        self.loss_fn = None
-        self.optimizer = None
-        self.model = None
+        self.train_polaris: InMemoryDataset
+        self.test_polaris: InMemoryDataset
+        self.train_scaffold: InMemoryDataset
+        self.test_scaffold: InMemoryDataset
+        self.loss_fn: nn.L1Loss
+        self.optimizer: Optimizer
+        self.model: nn.Module
 
         self._init()
 
@@ -108,6 +111,9 @@ class Polaris:
                 self.performance_tracker.log({"early_stop_epoch": epoch})
                 break
 
+        # In case early stopping is not triggered
+        self.performance_tracker.log({"early_stop_epoch": epoch})
+
     def train_final(self, train_dataset) -> None:
         train_dataloader = DataLoader(
             train_dataset, batch_size=self.params["batch_size"], shuffle=True
@@ -134,13 +140,10 @@ class Polaris:
             weight_decay=self.params["weight_decay"],
         )
 
-    def _init_dataset(self):
+    def _init_polaris_dataset(self):
         root = Path("./data") / "polaris" / self.params["task"]
 
         log_transform = True if self.params["task"] == "admet" else False
-        use_erg = self.params["use_erg"] if 'use_erg' in self.params else False
-        use_ft = self.params["use_ft"] if 'use_ft' in self.params else False
-        ft_resolution = self.params["ft_resolution"] if 'ft_resolution' in self.params else 0
 
         self.train_polaris = PolarisDataset(
             root=root,
@@ -148,10 +151,10 @@ class Polaris:
             target_task=self.params["target_task"],
             train=True,
             log_transform=log_transform,
-            force_reload=False,
-            use_erg=use_erg,
-            use_ft=use_ft,
-            ft_resolution=ft_resolution,
+            force_reload=True,
+            use_erg=self.params["use_erg"],
+            use_ft=self.params["use_ft"],
+            ft_resolution=self.params["ft_resolution"],
         )
         self.test_polaris = PolarisDataset(
             root=root,
@@ -159,15 +162,41 @@ class Polaris:
             target_task=self.params["target_task"],
             train=False,
             log_transform=log_transform,
-            force_reload=False,
-            use_erg=use_erg,
-            use_ft=use_ft,
-            ft_resolution=ft_resolution,
+            force_reload=True,
+            use_erg=self.params["use_erg"],
+            use_ft=self.params["use_ft"],
+            ft_resolution=self.params["ft_resolution"],
         )
 
         self.train_scaffold, self.test_scaffold = scaffold_split(
             dataset=self.train_polaris, test_size=self.params["scaffold_split_val_sz"]
         )
+
+    def _init_molecule_net_dataset(self):
+        root = Path("./data") / "molecule_net"
+        molecule_net_dataset = MoleculeNetDataset(
+            root=root,
+            target_task=self.params["target_task"],
+            force_reload=False,
+            use_erg=self.params["use_erg"],
+            use_ft=self.params["use_ft"],
+            ft_resolution=self.params["ft_resolution"],
+        ).create_dataset()
+
+        self.train_scaffold, self.test_scaffold = scaffold_split(
+            dataset=molecule_net_dataset, test_size=self.params["scaffold_split_val_sz"]
+        )
+
+    def _init_dataset(self):
+        match self.params["task"]:
+            case "admet":
+                self._init_polaris_dataset()
+            case "potency":
+                self._init_polaris_dataset()
+            case "molecule_net":
+                self._init_molecule_net_dataset()
+            case _:
+                raise NotImplementedError
 
     def _train_loop(self, dataloader):
         self.model.train()
@@ -231,7 +260,7 @@ class PolarisDispatcher:
             queue = manager.Queue()
 
             params_list: list[dict] = make_combinations(self.params)
-            processes = 12
+            processes = self.params["processes"]
 
             def update_progress(_):
                 with lock:
@@ -239,14 +268,17 @@ class PolarisDispatcher:
                     print(f"Progress: {counter.value}/{len(params_list)}")
 
             print(f"Total param count: {len(params_list)}")
-            print("Using device: cpu")
+            print(f"Using device: 'cpu' with {processes} processes")
+            print(f"Processes: {processes}")
 
             estimated_secs_to_complete = (len(params_list) / processes) * 80
             print(
                 f"Estimated time to completion: {format_time_readable(estimated_secs_to_complete)}"
             )
 
-            with Pool(processes=12) as pool:
+            # self.worker(params_list[0], queue)
+
+            with Pool(processes=processes) as pool:
                 for params in params_list:
                     pool.apply_async(
                         self.worker,
@@ -266,9 +298,14 @@ class PolarisDispatcher:
             else:
                 name = self.params["repr_model"].lower()
 
-            results_path: Path = Path(".") / "results" / f"{self.params['task']}_{name}_results.csv"
+            folder = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+            results_path: Path = (
+                Path(".") / "results" / folder / f"{self.params['task']}_{name}_results.csv"
+            )
+            config_path: Path = Path(".") / "results" / folder / "config.yml"
             results_path.parent.mkdir(parents=True, exist_ok=True)
             save_dict_to_csv(result, results_path)
+            save_dict_to_yaml(self.params, config_path)
 
     @staticmethod
     def worker(params, queue):
