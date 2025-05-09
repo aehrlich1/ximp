@@ -130,7 +130,10 @@ class ReducedGraphData(Data):
         elif 'rg_edge_index' in key:
             return getattr(self, f'rg_num_atoms_{idx}')
         elif 'mapping' in key:
-            return torch.tensor([[torch.sum(getattr(self, f'raw_num_atoms_{idx}'))], [getattr(self, f'rg_num_atoms_{idx}')]])
+            # return torch.tensor([[torch.sum(getattr(self, f'raw_num_atoms_{idx}'))], [getattr(self, f'rg_num_atoms_{idx}')]])
+            x = torch.tensor(getattr(self, f"raw_num_atoms_{idx}"))
+            y = torch.tensor(getattr(self, f"rg_num_atoms_{idx}"))
+            return torch.tensor([[torch.sum(x)], [y]])
         else:
             return super().__inc__(key, value, *args, **kwargs)
 
