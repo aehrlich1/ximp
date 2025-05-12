@@ -3,16 +3,16 @@ This file will contain utility functions to be used by everybody
 """
 
 import csv
+from collections import defaultdict
 from pathlib import Path
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 import yaml
 from matplotlib import pyplot as plt
 from rdkit import Chem
 from rdkit.Chem.Scaffolds import MurckoScaffold
 from torch_geometric.data import InMemoryDataset
-from collections import defaultdict
 
 
 class ScaffoldKFold:
@@ -20,7 +20,6 @@ class ScaffoldKFold:
         self.n_splits = n_splits
         self.shuffle = shuffle
         self.random_state = random_state
-
 
     def split(self, smiles_list, y=None):
         """Generate Scaffold-based KFold splits."""
@@ -51,9 +50,7 @@ class ScaffoldKFold:
 def generate_scaffold(smiles) -> str | None:
     mol = Chem.MolFromSmiles(smiles)
     if mol is None:
-        print(
-            f"{smiles} is not a valid SMILES. Could not generate scaffold. Returning None."
-        )
+        print(f"{smiles} is not a valid SMILES. Could not generate scaffold. Returning None.")
         return None
     scaffold = MurckoScaffold.MurckoScaffoldSmiles(mol=mol, includeChirality=False)
     return scaffold
@@ -193,21 +190,15 @@ def make_combinations_improved(
 
         # Create new combinations with each value
         combinations = [
-            {**existing, key: new_value}
-            for existing in combinations
-            for new_value in values
+            {**existing, key: new_value} for existing in combinations for new_value in values
         ]
 
     # Handle coupled keys if provided
     if coupled_keys and all(k in dictionary for k in coupled_keys):
         key1, key2 = coupled_keys
         # Get values for both keys
-        vals1 = (
-            dictionary[key1] if isinstance(dictionary[key1], list) else [dictionary[key1]]
-        )
-        vals2 = (
-            dictionary[key2] if isinstance(dictionary[key2], list) else [dictionary[key2]]
-        )
+        vals1 = dictionary[key1] if isinstance(dictionary[key1], list) else [dictionary[key1]]
+        vals2 = dictionary[key2] if isinstance(dictionary[key2], list) else [dictionary[key2]]
         # Pair the values
         paired_values = list(zip(vals1, vals2))
 
