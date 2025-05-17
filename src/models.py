@@ -66,7 +66,7 @@ def create_repr_model(params: dict) -> nn.Module:
                 num_layers=params["num_layers"],
                 dropout=params["dropout"],
                 rg_num=rg_num,
-                rg_embedding_dim=[params["rg_embedding_dim"]]*rg_num
+                rg_embedding_dim=[params["rg_embedding_dim"]] * rg_num,
             )
         case _:
             raise NotImplementedError
@@ -237,6 +237,7 @@ class HIMPModel(nn.Module):
     def forward(self, data):
         return self.model(data)
 
+
 class EHIMPModel(nn.Module):
     def __init__(
         self,
@@ -245,8 +246,7 @@ class EHIMPModel(nn.Module):
         num_layers: int,
         dropout: float,
         rg_num: int,
-        rg_embedding_dim=list
-
+        rg_embedding_dim: list,
     ):
         super().__init__()
         self.model = EHimp(
@@ -255,7 +255,7 @@ class EHIMPModel(nn.Module):
             num_layers=num_layers,
             dropout=dropout,
             rg_num=rg_num,
-            rg_embedding_dim=rg_embedding_dim
+            rg_embedding_dim=rg_embedding_dim,
         )
 
     def forward(self, data):
@@ -266,7 +266,7 @@ class ECFPModel(nn.Module):
     def __init__(self, radius: int, fpSize: int):
         super().__init__()
         self.fpgen = AllChem.GetMorganGenerator(radius=radius, fpSize=fpSize)
-        #print(self.fpgen.GetInfoString(), flush=True)
+        # print(self.fpgen.GetInfoString(), flush=True)
 
     def forward(self, data):
         mols = [Chem.MolFromSmiles(smiles) for smiles in data.smiles]
@@ -328,10 +328,7 @@ class CategoricalEmbeddingModel(nn.Module):
             sys.exit()
         self.embedding_dim = embedding_dim
         self.embeddings = nn.ModuleList(
-            [
-                nn.Embedding(num_categories[i], embedding_dim)
-                for i in range(len(num_categories))
-            ]
+            [nn.Embedding(num_categories[i], embedding_dim) for i in range(len(num_categories))]
         )
 
     def forward(self, x):

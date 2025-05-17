@@ -6,8 +6,8 @@ import csv
 import warnings
 
 import torch
-from torch_geometric.datasets import MoleculeNet
 from torch_geometric.data import Data, InMemoryDataset
+from torch_geometric.datasets import MoleculeNet
 from torch_geometric.utils import from_smiles
 
 from src.transform import JunctionTree, ReducedGraph
@@ -72,8 +72,10 @@ class PolarisDataset(InMemoryDataset):
         self.force_reload = force_reload
         self.log_transform = log_transform
         self.junctionTree = JunctionTree()
-        self.use_himp_preprocessing = not(use_ft or use_erg)
-        self.reducedGraph = ReducedGraph(use_erg=use_erg, use_ft=use_ft, ft_resolution=ft_resolution)
+        self.use_himp_preprocessing = not (use_ft or use_erg)
+        self.reducedGraph = ReducedGraph(
+            use_erg=use_erg, use_ft=use_ft, ft_resolution=ft_resolution
+        )
 
         if task == "admet":
             self.target_col = self._admet_target_to_col_mapping(target_task)
@@ -119,9 +121,9 @@ class PolarisDataset(InMemoryDataset):
                 data.y = y
 
                 if self.use_himp_preprocessing:
-                    data = self.junctionTree(data) # HIMP Graph
+                    data = self.junctionTree(data)  # HIMP Graph
                 else:
-                    data = self.reducedGraph(data) # Extended HIMP Graphs
+                    data = self.reducedGraph(data)  # Extended HIMP Graphs
 
                 data_list.append(data)
 

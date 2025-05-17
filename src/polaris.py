@@ -83,6 +83,9 @@ class Polaris:
             {"final_avg_epochs": round(np.mean(self.performance_tracker.early_stop_epoch))}
         )
 
+        # Check why epochs are output twice
+        print(f"epochs per fold: {self.performance_tracker.early_stop_epoch}")
+
         # Reset model and train on train scaffold.
         # Evaluate on test scaffold. Report MAE.
         self._init_model()
@@ -156,6 +159,7 @@ class Polaris:
             use_ft=self.params["use_ft"],
             ft_resolution=self.params["ft_resolution"],
         )
+
         self.test_polaris = PolarisDataset(
             root=root,
             task=self.params["task"],
