@@ -7,22 +7,13 @@ import torch
 from sklearn.metrics import mean_absolute_error
 from sklearn.model_selection import StratifiedKFold
 from torch import nn
-from torch.multiprocessing import Manager, Pool
 from torch.optim import Adam, Optimizer
 from torch_geometric.data import InMemoryDataset
 from torch_geometric.loader import DataLoader
 
 from src.data import MoleculeNetDataset, PolarisDataset
 from src.models import PolarisModel, create_proj_model, create_repr_model
-from src.utils import (
-    PerformanceTracker,
-    ScaffoldKFold,
-    format_time_readable,
-    make_combinations,
-    save_dict_to_csv,
-    save_dict_to_yaml,
-    scaffold_split,
-)
+from src.utils import PerformanceTracker, scaffold_split
 
 
 class Polaris:
@@ -56,7 +47,6 @@ class Polaris:
         skf = StratifiedKFold(n_splits=self.params["num_cv_folds"], shuffle=True, random_state=42)
         # scaffold_kfold = ScaffoldKFold(n_splits=5, shuffle=True, random_state=42)
 
-        # print("Running K-Fold CV...")
         val_loss_list = []
 
         for train_idx, valid_idx in skf.split(smiles, y_binned):
@@ -82,9 +72,6 @@ class Polaris:
         self.params.update(
             {"final_avg_epochs": round(np.mean(self.performance_tracker.early_stop_epoch))}
         )
-
-        # Check why epochs are output twice
-        print(f"epochs per fold: {self.performance_tracker.early_stop_epoch}")
 
         # Reset model and train on train scaffold.
         # Evaluate on test scaffold. Report MAE.
@@ -250,69 +237,3 @@ class Polaris:
         pred = [p.item() for p in pred]
 
         return list(zip(smiles, pred))
-
-
-class PolarisDispatcher:
-    def __init__(self, params: dict) -> None:
-        self.params = params
-
-    def run(self):
-        torch.set_num_threads(1)
-        with Manager() as manager:
-            counter = manager.Value(int, 0)
-            lock = manager.Lock()
-            queue = manager.Queue()
-
-            params_list: list[dict] = make_combinations(self.params)
-            processes = self.params["processes"]
-
-            def update_progress(_):
-                with lock:
-                    counter.value += 1
-                    print(f"Progress: {counter.value}/{len(params_list)}")
-
-            print(f"Total param count: {len(params_list)}")
-            print(f"Using device: 'cpu' with {processes} processes")
-            print(f"Processes: {processes}")
-
-            estimated_secs_to_complete = (len(params_list) / processes) * 80
-            print(
-                f"Estimated time to completion: {format_time_readable(estimated_secs_to_complete)}"
-            )
-
-            # self.worker(params_list[0], queue)
-
-            with Pool(processes=processes) as pool:
-                for params in params_list:
-                    pool.apply_async(
-                        self.worker,
-                        (params, queue),
-                        callback=update_progress,
-                        error_callback=lambda e: print(e),
-                    )
-                pool.close()
-                pool.join()
-
-            result = []
-            while not queue.empty():
-                result.append(queue.get())
-
-            if isinstance(self.params["repr_model"], list):
-                name = "gnn"
-            else:
-                name = self.params["repr_model"].lower()
-
-            folder = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
-            results_path: Path = (
-                Path(".") / "results" / folder / f"{self.params['task']}_{name}_results.csv"
-            )
-            config_path: Path = Path(".") / "results" / folder / "config.yml"
-            results_path.parent.mkdir(parents=True, exist_ok=True)
-            save_dict_to_csv(result, results_path)
-            save_dict_to_yaml(self.params, config_path)
-
-    @staticmethod
-    def worker(params, queue):
-        torch.set_num_threads(1)
-        polaris = Polaris(params, queue)
-        polaris.run()
