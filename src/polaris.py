@@ -6,7 +6,7 @@ import pandas as pd
 import torch
 from sklearn.metrics import mean_absolute_error
 from sklearn.model_selection import StratifiedKFold
-from torch import nn
+from torch import nn, seed
 from torch.optim import Adam, Optimizer
 from torch_geometric.data import InMemoryDataset
 from torch_geometric.loader import DataLoader
@@ -23,8 +23,6 @@ class Polaris:
         self.device: str = "cpu"
         self.train_polaris: InMemoryDataset
         self.test_polaris: InMemoryDataset
-        self.train_scaffold: InMemoryDataset
-        self.test_scaffold: InMemoryDataset
         self.loss_fn: nn.L1Loss
         self.optimizer: Optimizer
         self.model: nn.Module
@@ -39,22 +37,21 @@ class Polaris:
         self._init_loss_fn()
 
     def run(self):
-        smiles = self.train_scaffold.smiles
-        labels = self.train_scaffold.y.view(-1).tolist()
+        smiles = self.train_polaris.smiles
+        labels = self.train_polaris.y.view(-1).tolist()
 
         y_binned = pd.qcut(labels, q=self.params["num_cv_bins"], labels=False)
         skf = StratifiedKFold(n_splits=self.params["num_cv_folds"], shuffle=True, random_state=42)
         # scaffold_kfold = ScaffoldKFold(n_splits=5, shuffle=True, random_state=42)
 
-        val_loss_list = []
-
+        valid_loss_list = []
         for train_idx, valid_idx in skf.split(smiles, y_binned):
             self._init_model()  # Reinitialize model
             self._init_optimizer()
             self.performance_tracker.reset()
 
-            train_fold = self.train_scaffold[train_idx]
-            valid_fold = self.train_scaffold[valid_idx]
+            train_fold = self.train_polaris[train_idx]
+            valid_fold = self.train_polaris[valid_idx]
 
             train_fold_dataloader = DataLoader(
                 train_fold, batch_size=self.params["batch_size"], shuffle=True
@@ -64,29 +61,22 @@ class Polaris:
             )
 
             self.train(train_fold_dataloader, valid_fold_dataloader)
-            val_loss_list.append(self.performance_tracker.best_valid_loss)
+            valid_loss_list.append(self.performance_tracker.valid_loss[-1])
 
-        self.params.update({"mean_val_loss": np.mean(val_loss_list)})
-        self.params.update({"patience": self.performance_tracker.patience})
-        self.params.update(
-            {"final_avg_epochs": round(np.mean(self.performance_tracker.early_stop_epoch))}
-        )
-
-        # Check why epochs are output twice
-        print(f"epochs per fold: {self.performance_tracker.early_stop_epoch}")
+        self.params.update({"mean_val_loss": np.mean(self.performance_tracker.valid_loss)})
 
         # Reset model and train on train scaffold.
         # Evaluate on test scaffold. Report MAE.
         self._init_model()
         self._init_optimizer()
-        self.train_final(self.train_scaffold)
+        self.train_final(self.train_polaris)
         preds = self.predict(self.test_scaffold)
         preds = [pred[1] for pred in preds]
         mae = mean_absolute_error(preds, self.test_scaffold.y)
         self.params.update({"mae_test_scaffold": mae})
 
-        print(f"Validation losses: {val_loss_list}")
-        print(f"Average validation loss: {np.mean(val_loss_list)}")
+        print(f"Validation losses for each fold: {valid_loss_list}")
+        print(f"Average validation loss: {np.mean(valid_loss_list)}")
         print(f"Mean absolute error for {self.params['target_task']} on test_scaffold: {mae:.3f}")
 
     def train(self, train_dataloader, valid_dataloader) -> None:
@@ -95,16 +85,11 @@ class Polaris:
             self._train_loop(train_dataloader)
             self._valid_loop(valid_dataloader)
 
-            self.performance_tracker.update_early_loss_state()
-            if self.performance_tracker.early_stop:
-                self.performance_tracker.log({"early_stop_epoch": epoch})
-                break
-
     def train_final(self, train_dataset) -> None:
         train_dataloader = DataLoader(
             train_dataset, batch_size=self.params["batch_size"], shuffle=True
         )
-        for _ in range(self.params["final_avg_epochs"]):
+        for _ in range(self.params["epochs"]):
             self._train_loop(train_dataloader)
 
     def _init_device(self):
@@ -155,7 +140,7 @@ class Polaris:
             ft_resolution=self.params["ft_resolution"],
         )
 
-        self.train_scaffold, self.test_scaffold = scaffold_split(
+        self.train_polaris, self.test_scaffold = scaffold_split(
             dataset=self.train_polaris, test_size=self.params["scaffold_split_val_sz"]
         )
 
@@ -170,7 +155,7 @@ class Polaris:
             ft_resolution=self.params["ft_resolution"],
         ).create_dataset()
 
-        self.train_scaffold, self.test_scaffold = scaffold_split(
+        self.train_polaris, self.test_scaffold = scaffold_split(
             dataset=molecule_net_dataset, test_size=self.params["scaffold_split_val_sz"]
         )
 

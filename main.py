@@ -22,7 +22,7 @@ if __name__ == "__main__":
     # Learning parameters
     parser.add_argument("--batch_size", help="Batch size", default=32)
     parser.add_argument("--dropout", help="Dropout ratio", default=0.0)
-    parser.add_argument("--epochs", help="Epochs", default=100)
+    parser.add_argument("--epochs", help="Epochs", default=10)
     parser.add_argument("--lr", help="Learning Rate", default=1.0e-4)
     parser.add_argument("--weight_decay", help="Weight decay", default=0)
 
