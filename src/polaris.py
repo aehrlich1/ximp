@@ -17,9 +17,8 @@ from src.utils import PerformanceTracker, scaffold_split
 
 
 class Polaris:
-    def __init__(self, params: dict, queue=None):
+    def __init__(self, params: dict):
         self.params: dict = params
-        self.queue = queue
         self.performance_tracker = PerformanceTracker(Path("./models"), id_run="x")
         self.device: str = "cpu"
         self.train_polaris: InMemoryDataset
@@ -89,9 +88,6 @@ class Polaris:
         print(f"Validation losses: {val_loss_list}")
         print(f"Average validation loss: {np.mean(val_loss_list)}")
         print(f"Mean absolute error for {self.params['target_task']} on test_scaffold: {mae:.3f}")
-
-        if self.queue is not None:
-            self.queue.put(self.params)
 
     def train(self, train_dataloader, valid_dataloader) -> None:
         for epoch in range(self.params["epochs"]):
