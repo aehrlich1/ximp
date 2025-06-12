@@ -69,7 +69,7 @@ class Polaris:
         self.params.update({"mean_val_loss": np.mean(val_loss_list)})
         self.params.update({"patience": self.performance_tracker.patience})
         self.params.update(
-            {"final_avg_epochs": round(np.mean(self.performance_tracker.early_stop_epoch))}
+            {"final_avg_epochs": round(np.mean(self.performance_tracker.early_stop_epoch))} # List stays empty if number of epochs to short
         )
 
         # Check why epochs are output twice
@@ -99,6 +99,7 @@ class Polaris:
             if self.performance_tracker.early_stop:
                 self.performance_tracker.log({"early_stop_epoch": epoch})
                 break
+        print(self.performance_tracker.early_stop, flush=True)
 
     def train_final(self, train_dataset) -> None:
         train_dataloader = DataLoader(
