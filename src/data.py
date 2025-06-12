@@ -1,17 +1,25 @@
 """
 This file will take care of all data related aspects.
 """
-
+import atexit
 import csv
+import os
+import shutil
 import warnings
+from pathlib import Path
+from typing import List, Tuple, Optional
 
 import torch
-from torch_geometric.data import Data, InMemoryDataset
+from torch_geometric.data import Data, InMemoryDataset, Dataset
 from torch_geometric.datasets import MoleculeNet
 from torch_geometric.utils import from_smiles
 
 from src.transform import JunctionTree, ReducedGraph
 from src.utils import scaffold_split
+
+import uuid
+import socket
+import atexit
 
 # Ignore FutureWarnings from torch.load about weightsOnly bool != True
 warnings.simplefilter("ignore", category=FutureWarning)
@@ -37,7 +45,7 @@ class MoleculeNetDataset:
         )
         self.use_himp_preprocessing = not (use_ft or use_erg)
 
-    def _pre_transform(self, data):
+    def _pre_transform(self, data): #TODO: rename from pre_transform if we use it as transform below?
         if self.use_himp_preprocessing:
             data = self.junction_tree(data)  # HIMP Graph
         else:
@@ -52,7 +60,6 @@ class MoleculeNetDataset:
             transform=self._pre_transform,
             force_reload=self.force_reload,
         )
-
 
 class PolarisDataset(InMemoryDataset):
     def __init__(
@@ -84,6 +91,15 @@ class PolarisDataset(InMemoryDataset):
         else:
             raise ValueError(f"Unknown task: {task}")
 
+        # Create unique file names for processed files
+        self.uniq = f"{socket.gethostname()}_{os.getpid()}_{uuid.uuid4().hex[:8]}" #1:2^8 chance of collision for 8 bit, up to 1:2^32 possible
+        self._processed_file_names: List[str] = [
+            f"train_{self.target_col}_{self.uniq}.pt",
+            f"test_{self.uniq}.pt",
+        ]
+        # Register the same cleanup routine for both __del__ and atexit
+        atexit.register(self._cleanup)
+
         super().__init__(root, force_reload=force_reload)
         self.load(self.processed_paths[0] if train else self.processed_paths[1])
 
@@ -92,8 +108,18 @@ class PolarisDataset(InMemoryDataset):
         return ["train_polaris.csv", "test_polaris.csv"]
 
     @property
+    def processed_dir(self) -> str:
+        """
+        Every dataset instance gets its *own* directory, eg:
+        <root>/processed/<unique_tag>/
+        This isolates also PyG’s internal cache files pre_filter.pt / pre_transform.pt.
+        """
+        return os.path.join(self.root, "processed", self.uniq)
+
+    @property
     def processed_file_names(self):
-        return [f"train_{self.target_col}.pt", "test.pt"]
+        #return [f"train_{self.target_col}.pt", "test.pt"]
+        return self._processed_file_names
 
     def process(self):
         self.process_train() if self.train else self.process_test()
@@ -143,6 +169,29 @@ class PolarisDataset(InMemoryDataset):
 
         self.save(data_list, self.processed_paths[1])
 
+    # Cleanup routine
+    def _cleanup_processed_files(self):
+        for path in self.processed_paths:
+            try:
+                pass
+                Path(path).unlink(missing_ok=True)
+            except Exception:
+                pass  # ignore permissions or race conditions
+
+    def _cleanup_processed_dir(self):
+        try:
+            shutil.rmtree(self.processed_dir, ignore_errors=True)
+        except Exception:
+            pass  # best-effort; ignore races or permissions
+
+    def _cleanup(self):
+        self._cleanup_processed_files() #Redundant
+        self._cleanup_processed_dir()
+    def __del__(self):
+        # Guaranteed attempt to delete (atexit handles interpreter shutdown)
+        self._cleanup_processed_files()
+        self._cleanup()
+
     @staticmethod
     def _admet_target_to_col_mapping(target_task: str) -> int:
         match target_task:
@@ -168,7 +217,6 @@ class PolarisDataset(InMemoryDataset):
                 return 2
             case _:
                 raise ValueError(f"Unknown target task: {target_task}")
-
 
 if __name__ == "__main__":
     dataset = PolarisDataset(
