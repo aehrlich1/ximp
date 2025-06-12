@@ -16,7 +16,7 @@ from src.models import PolarisModel, create_proj_model, create_repr_model
 from src.utils import PerformanceTracker, scaffold_split
 
 
-class Polaris:
+class Polaris: #TODO Should be renamed if not only Polaris anymore or split in Moleculenet and Polaris
     def __init__(self, params: dict):
         self.params: dict = params
         self.performance_tracker = PerformanceTracker(Path("./models"), id_run="x")
@@ -25,7 +25,7 @@ class Polaris:
         self.test_polaris: InMemoryDataset
         self.train_scaffold: InMemoryDataset
         self.test_scaffold: InMemoryDataset
-        self.loss_fn: nn.L1Loss
+        self.loss_fn: nn.L1Loss #TODO: Check against self._init_loss_fn -- why do we do both?
         self.optimizer: Optimizer
         self.model: nn.Module
 
@@ -67,9 +67,6 @@ class Polaris:
             val_loss_list.append(self.performance_tracker.best_valid_loss)
 
         self.params.update({"mean_val_loss": np.mean(val_loss_list)})
-
-        # Check why epochs are output twice
-        #print(f"epochs per fold: {self.performance_tracker.early_stop_epoch}")
 
         # Reset model and train on train scaffold.
         # Evaluate on test scaffold. Report MAE.

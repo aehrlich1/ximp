@@ -82,7 +82,7 @@ def create_proj_model(params: dict) -> nn.Module:
     )
 
 
-class PolarisModel(nn.Module):
+class PolarisModel(nn.Module): #TODO: Should be renamed if not just Polaris anymore
     def __init__(self, repr_model: nn.Module, proj_model: nn.Module):
         super().__init__()
         self.repr_model = repr_model
