@@ -92,15 +92,11 @@ class PerformanceTracker:
         self.tracking_dir: Path = tracking_dir
         self.id_run = id_run
         self.epoch = []
-        self.early_stop_epoch = []
         self.train_loss = []
         self.valid_loss = []
         self.test_pred = {}
 
-        self.counter = 0
-        self.patience = 5
         self.best_valid_loss = float("inf")
-        self.early_stop = False
 
     def reset(self):
         self.epoch = []
@@ -108,10 +104,7 @@ class PerformanceTracker:
         self.valid_loss = []
         self.test_pred = {}
 
-        self.counter = 0
-        self.patience = 5
         self.best_valid_loss = float("inf")
-        self.early_stop = False
 
     def save_performance(self) -> None:
         self.save_to_csv()
@@ -148,16 +141,9 @@ class PerformanceTracker:
             "valid_loss": self.valid_loss[-1],
         }
 
-    def update_early_loss_state(self) -> None:
+    def update_valid_loss(self) -> None: #weg
         if self.valid_loss[-1] < self.best_valid_loss:
             self.best_valid_loss = self.valid_loss[-1]
-            self.counter = 0
-        else:
-            self.counter += 1
-
-        if self.counter >= self.patience:
-            self.early_stop = True
-            # print("Early stopping triggered.")
 
     def log(self, data: dict[str, int | float]) -> None:
         for key, value in data.items():

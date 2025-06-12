@@ -67,13 +67,9 @@ class Polaris:
             val_loss_list.append(self.performance_tracker.best_valid_loss)
 
         self.params.update({"mean_val_loss": np.mean(val_loss_list)})
-        self.params.update({"patience": self.performance_tracker.patience})
-        self.params.update(
-            {"final_avg_epochs": round(np.mean(self.performance_tracker.early_stop_epoch))} # List stays empty if number of epochs to short
-        )
 
         # Check why epochs are output twice
-        print(f"epochs per fold: {self.performance_tracker.early_stop_epoch}")
+        #print(f"epochs per fold: {self.performance_tracker.early_stop_epoch}")
 
         # Reset model and train on train scaffold.
         # Evaluate on test scaffold. Report MAE.
@@ -95,17 +91,13 @@ class Polaris:
             self._train_loop(train_dataloader)
             self._valid_loop(valid_dataloader)
 
-            self.performance_tracker.update_early_loss_state()
-            if self.performance_tracker.early_stop:
-                self.performance_tracker.log({"early_stop_epoch": epoch})
-                break
-        print(self.performance_tracker.early_stop, flush=True)
+            self.performance_tracker.update_valid_loss()
 
     def train_final(self, train_dataset) -> None:
         train_dataloader = DataLoader(
             train_dataset, batch_size=self.params["batch_size"], shuffle=True
         )
-        for _ in range(self.params["final_avg_epochs"]):
+        for _ in range(self.params["epochs"]):
             self._train_loop(train_dataloader)
 
     def _init_device(self):
