@@ -1,7 +1,7 @@
 """
 This file will contain utility functions to be used by everybody
 """
-
+import argparse
 import csv
 from collections import defaultdict
 from pathlib import Path
@@ -253,3 +253,15 @@ def format_time_readable(seconds):
     minutes = (seconds % 3600) // 60
     sec = seconds % 60
     return f"{hours}h {minutes}m {sec}s"
+
+def str2bool(v):
+    # Convert a string representation of truth to a boolean value.
+    # Necessary for argparse to handle boolean flags correctly.
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
