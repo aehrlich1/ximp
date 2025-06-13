@@ -1,16 +1,15 @@
 """
 This file will take care of all data related aspects.
 """
-import atexit
+
 import csv
 import os
 import shutil
 import warnings
 from pathlib import Path
-from typing import List, Tuple, Optional
-
+from typing import List
 import torch
-from torch_geometric.data import Data, InMemoryDataset, Dataset
+from torch_geometric.data import Data, InMemoryDataset
 from torch_geometric.datasets import MoleculeNet
 from torch_geometric.utils import from_smiles
 
@@ -92,10 +91,10 @@ class PolarisDataset(InMemoryDataset):
             raise ValueError(f"Unknown task: {task}")
 
         # Create unique file names for processed files
-        self.uniq = f"{socket.gethostname()}_{os.getpid()}_{uuid.uuid4().hex[:8]}" #1:2^8 chance of collision for 8 bit, up to 1:2^32 possible
+        self._uniq = f"{socket.gethostname()}_{os.getpid()}_{uuid.uuid4().hex[:8]}" #1:2^8 chance of collision for 8 bit, up to 1:2^32 possible, per process per machine
         self._processed_file_names: List[str] = [
-            f"train_{self.target_col}_{self.uniq}.pt",
-            f"test_{self.uniq}.pt",
+            f"train_{self.target_col}_{self._uniq}.pt",
+            f"test_{self._uniq}.pt",
         ]
         # Register the same cleanup routine for both __del__ and atexit
         atexit.register(self._cleanup)
@@ -114,7 +113,7 @@ class PolarisDataset(InMemoryDataset):
         <root>/processed/<unique_tag>/
         This isolates also PyG’s internal cache files pre_filter.pt / pre_transform.pt.
         """
-        return os.path.join(self.root, "processed", self.uniq)
+        return os.path.join(self.root, "processed", self._uniq)
 
     @property
     def processed_file_names(self):
@@ -185,7 +184,7 @@ class PolarisDataset(InMemoryDataset):
             pass  # best-effort; ignore races or permissions
 
     def _cleanup(self):
-        self._cleanup_processed_files() # Redundant
+        self._cleanup_processed_files() # TODO: decided whether this redundancy should remain
         self._cleanup_processed_dir()
     def __del__(self):
         # Guaranteed attempt to delete (atexit handles interpreter shutdown)

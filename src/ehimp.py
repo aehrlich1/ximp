@@ -66,7 +66,8 @@ class EHimp(torch.nn.Module):
 
     """
     def __init__(self, hidden_channels, out_channels, num_layers, dropout=0.0,
-                 rg_num=1, rg_embedding_dim=[8], device='cpu', use_raw=True, inter_message_passing=True): #TODO Hyperparameters need either be infered or  go in config
+                 rg_num=1, rg_embedding_dim=[8], device='cpu', use_raw=True,
+                 inter_message_passing=True, inter_graph_message_passing=True): #TODO Hyperparameters need either be infered or  go in config
         """
         Constructor for NetCustom.
 
@@ -89,6 +90,7 @@ class EHimp(torch.nn.Module):
         self.rg_num = rg_num
         self.use_raw = use_raw
         self.inter_message_passing = inter_message_passing
+        self.inter_graph_message_passing = inter_graph_message_passing
 
         # Atom encoder for raw graph data
         self.atom_encoder = AtomEncoder(hidden_channels)
@@ -166,12 +168,13 @@ class EHimp(torch.nn.Module):
             self.rg_lins.append(Linear(hidden_channels, hidden_channels)).to(device)
 
         # For inter-message passing between reduced graphs
-        self.rg2rg_lins = ModuleList()
-        for i in range(num_layers):
-            for j in range(self.rg_num):
-                for k in range(j + 1, self.rg_num):
-                    self.rg2rg_lins.append(Linear(hidden_channels, hidden_channels)).to(device) # one for each direction
-                    self.rg2rg_lins.append(Linear(hidden_channels, hidden_channels)).to(device)
+        if self.inter_graph_message_passing:
+            self.rg2rg_lins = ModuleList()
+            for i in range(num_layers):
+                for j in range(self.rg_num):
+                    for k in range(j + 1, self.rg_num):
+                        self.rg2rg_lins.append(Linear(hidden_channels, hidden_channels)).to(device) # one for each direction
+                        self.rg2rg_lins.append(Linear(hidden_channels, hidden_channels)).to(device)
     def __collect_rg_from_data(self, data):
         """
         Collect reduced graph data from data object.
@@ -221,7 +224,7 @@ class EHimp(torch.nn.Module):
                 x = F.dropout(x, self.dropout, training=self.training)
 
             # Inter message passing between reduced graphs
-            if self.inter_message_passing:
+            if self.inter_graph_message_passing:
                 for j in range(self.rg_num):
                     for k in range(j+1, self.rg_num):
                             rg_j = rgs[j]

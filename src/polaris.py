@@ -79,9 +79,9 @@ class Polaris: #TODO Should be renamed if not only Polaris anymore or split in M
         mae = mean_absolute_error(preds, self.test_scaffold.y)
         self.params.update({"mae_test_scaffold": mae})
 
-        print(f"Validation losses: {val_loss_list}")
-        print(f"Average validation loss: {np.mean(val_loss_list)}")
-        print(f"Mean absolute error for {self.params['target_task']} on test_scaffold: {mae:.3f}")
+        print(f"Validation losses: {val_loss_list}") # on final epoch
+        print(f"Average validation loss: {np.mean(val_loss_list)}") # on final epochs
+        print(f"Mean absolute error for {self.params['target_task']} on test_scaffold: {mae:.3f}") # for training @ given num of epochs
 
     def train(self, train_dataloader, valid_dataloader) -> None:
         for epoch in range(self.params["epochs"]):
@@ -90,7 +90,7 @@ class Polaris: #TODO Should be renamed if not only Polaris anymore or split in M
             self._valid_loop(valid_dataloader)
 
             #print(self.performance_tracker.update_best_valid_loss()) # See comment on ln 68
-            print(epoch, self.performance_tracker.valid_loss, flush=True)
+            #print(epoch, self.performance_tracker.valid_loss, flush=True)
 
     def train_final(self, train_dataset) -> None:
         train_dataloader = DataLoader(
