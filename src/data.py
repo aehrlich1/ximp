@@ -5,6 +5,7 @@ This file will take care of all data related aspects.
 import csv
 import os
 import shutil
+import time
 import warnings
 from pathlib import Path
 from typing import List
@@ -91,7 +92,7 @@ class PolarisDataset(InMemoryDataset):
             raise ValueError(f"Unknown task: {task}")
 
         # Create unique file names for processed files
-        self._uniq = f"{socket.gethostname()}_{os.getpid()}_{uuid.uuid4().hex[:8]}" #1:2^8 chance of collision for 8 bit, up to 1:2^32 possible, per process per machine
+        self._uniq = f"{socket.gethostname()}_{os.getpid()}_{str(int(time.time()))}_{uuid.uuid4().hex[:8]}" #1:2^(8*8) chance of collision for 8 byte, up to 1:2^(8*32) possible, per process per machine per second
         self._processed_file_names: List[str] = [
             f"train_{self.target_col}_{self._uniq}.pt",
             f"test_{self._uniq}.pt",

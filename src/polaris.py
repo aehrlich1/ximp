@@ -1,3 +1,6 @@
+import os
+import socket
+import uuid
 from datetime import datetime
 from pathlib import Path
 
@@ -13,7 +16,7 @@ from torch_geometric.loader import DataLoader
 
 from src.data import MoleculeNetDataset, PolarisDataset
 from src.models import PolarisModel, create_proj_model, create_repr_model
-from src.utils import PerformanceTracker, scaffold_split
+from src.utils import PerformanceTracker, scaffold_split, save_dict_to_csv
 
 
 class Polaris: #TODO Should be renamed if not only Polaris anymore or split in Moleculenet and Polaris
@@ -68,12 +71,13 @@ class Polaris: #TODO Should be renamed if not only Polaris anymore or split in M
             val_loss_list.append(self.performance_tracker.valid_loss[-1]) # Need to use last value if epochs treated as regular hyper param
 
         self.params.update({"mean_val_loss": np.mean(val_loss_list)})
+        self.params.update({"std_val_loss": np.std(val_loss_list)})
 
         # Reset model and train on train scaffold.
         # Evaluate on test scaffold. Report MAE.
         self._init_model()
         self._init_optimizer()
-        self.train_final(self.train_scaffold)
+        self.train_final(self.train_scaffold) # Leads to duplicate entries in train_loss stored by performance tracker
         preds = self.predict(self.test_scaffold)
         preds = [pred[1] for pred in preds]
         mae = mean_absolute_error(preds, self.test_scaffold.y)
@@ -82,6 +86,9 @@ class Polaris: #TODO Should be renamed if not only Polaris anymore or split in M
         print(f"Validation losses: {val_loss_list}") # on final epoch
         print(f"Average validation loss: {np.mean(val_loss_list)}") # on final epochs
         print(f"Mean absolute error for {self.params['target_task']} on test_scaffold: {mae:.3f}") # for training @ given num of epochs
+        #self.performance_tracker.save_to_csv()
+        uniq = f"{socket.gethostname()}_{os.getpid()}_{uuid.uuid4().hex[:8]}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        save_dict_to_csv([self.params], Path(f"./results/run_{uniq}.csv"))
 
     def train(self, train_dataloader, valid_dataloader) -> None:
         for epoch in range(self.params["epochs"]):
