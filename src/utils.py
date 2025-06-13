@@ -141,7 +141,7 @@ class PerformanceTracker:
             "valid_loss": self.valid_loss[-1],
         }
 
-    def update_valid_loss(self) -> None: #weg
+    def update_best_valid_loss(self) -> None: #weg
         if self.valid_loss[-1] < self.best_valid_loss:
             self.best_valid_loss = self.valid_loss[-1]
 

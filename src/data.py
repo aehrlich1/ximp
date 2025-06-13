@@ -185,7 +185,7 @@ class PolarisDataset(InMemoryDataset):
             pass  # best-effort; ignore races or permissions
 
     def _cleanup(self):
-        self._cleanup_processed_files() #Redundant
+        self._cleanup_processed_files() # Redundant
         self._cleanup_processed_dir()
     def __del__(self):
         # Guaranteed attempt to delete (atexit handles interpreter shutdown)

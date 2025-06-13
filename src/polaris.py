@@ -64,7 +64,8 @@ class Polaris: #TODO Should be renamed if not only Polaris anymore or split in M
             )
 
             self.train(train_fold_dataloader, valid_fold_dataloader)
-            val_loss_list.append(self.performance_tracker.best_valid_loss)
+            #val_loss_list.append(self.performance_tracker.best_valid_loss)
+            val_loss_list.append(self.performance_tracker.valid_loss[-1]) # Need to use last value if epochs treated as regular hyper param
 
         self.params.update({"mean_val_loss": np.mean(val_loss_list)})
 
@@ -88,7 +89,8 @@ class Polaris: #TODO Should be renamed if not only Polaris anymore or split in M
             self._train_loop(train_dataloader)
             self._valid_loop(valid_dataloader)
 
-            self.performance_tracker.update_valid_loss()
+            #print(self.performance_tracker.update_best_valid_loss()) # See comment on ln 68
+            print(epoch, self.performance_tracker.valid_loss, flush=True)
 
     def train_final(self, train_dataset) -> None:
         train_dataloader = DataLoader(
@@ -193,7 +195,7 @@ class Polaris: #TODO Should be renamed if not only Polaris anymore or split in M
 
     def _valid_loop(self, dataloader):
         self.model.eval()
-        self.performance_tracker.valid_loss = []
+        #self.performance_tracker.valid_loss = [] #TODO why did we do this? Makes no sense to clear a list for every item you push into it.
         epoch_loss = 0
 
         with torch.no_grad():
