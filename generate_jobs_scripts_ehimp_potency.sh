@@ -73,8 +73,9 @@ cat > "$sub" << EOF
 #SBATCH --partition=${SLURM_PARTITION}
 #SBATCH --requeue
 
+export ENV_MODE=permanant
+export ENV_NAME="lorenz_bitflips"
 module load miniforge
-conda activate lorenz_bitflips   # adjust or remove if not needed
 
 python ${PYTHON_SCRIPT} \
   --task ${TASK} \
