@@ -159,49 +159,60 @@ def addFeatureTreeWithLowerResolution(tree, resolution=1):
     new_mapping = torch.clone(mapping)
     new_rg_atom_features = torch.clone(rg_atom_features)
     new_rg_num_atoms = rg_num_atoms - len(leaf_idxs)
+    if new_rg_num_atoms >= 1:  # Prevents graphs with 0 nodes
+        non_leaf_edges = torch.logical_and(torch.isin(rg_edge_index[0], non_leaf_idxs), torch.isin(rg_edge_index[1], non_leaf_idxs)) # Edges that are not connecting leaf nodes
+        new_rg_edge_index = rg_edge_index[:, non_leaf_edges]
 
-    non_leaf_edges = torch.logical_and(torch.isin(rg_edge_index[0], non_leaf_idxs), torch.isin(rg_edge_index[1], non_leaf_idxs)) # Edges that are not connecting leaf nodes
-    new_rg_edge_index = rg_edge_index[:, non_leaf_edges]
+        idx_reduction = torch.zeros(rg_num_atoms, dtype=torch.int64) # Array that maps the gap between the index of a node in the original and new trees
+        parents = rg_edge_index[1, torch.isin(rg_edge_index[0], leaf_idxs)] # Parents of leaves
 
-    idx_reduction = torch.zeros(rg_num_atoms, dtype=torch.int64) # Array that maps the gap between the index of a node in the original and new trees
-    parents = rg_edge_index[1, torch.isin(rg_edge_index[0], leaf_idxs)] # Parents of leaves
+        for leaf, parent in zip(leaf_idxs, parents):
+            idx_reduction[leaf:] += 1
 
-    for leaf, parent in zip(leaf_idxs, parents):
-        idx_reduction[leaf:] += 1
+            new_mapping[1, new_mapping[1] == leaf] = parent  # Map nodes that are mapped to the leaf to its parent
 
-        new_mapping[1, new_mapping[1] == leaf] = parent  # Map nodes that are mapped to the leaf to its parent
+            # Original
+            if new_rg_atom_features[leaf] < new_rg_atom_features[parent]:  # Change the feature attribute it needed
+                new_rg_atom_features[parent] = new_rg_atom_features[leaf].to(torch.int64)
 
-        # Original
-        if new_rg_atom_features[leaf] < new_rg_atom_features[parent]:  # Change the feature attribute it needed
-            new_rg_atom_features[parent] = new_rg_atom_features[leaf].to(torch.int64)
+            # Hashing (summation not meaningful as we use indices of embeddings dictionary)
+            #print(new_rg_atom_features, leaf, parent, flush=True)
+            #def hash_pairwise(a: torch.Tensor, b: torch.Tensor, k: int) -> torch.Tensor:
+            #    p1, p2 = 31, 77 # Primes, ideally chosen st they are coprime with k (i.e. they hsare no commong factor but 1 with k) - gives best distribution.
+            #    #p1, p2 = 31, 77 (but also 3 and 7) would be coprime to 100
+            #    return torch.abs(a * p1 + b * p2) % k
 
-        # Hashing (summation not meaningful as we use indices of embeddings dictionary)
-        #print(new_rg_atom_features, leaf, parent, flush=True)
-        #def hash_pairwise(a: torch.Tensor, b: torch.Tensor, k: int) -> torch.Tensor:
-        #    p1, p2 = 31, 77 # Primes, ideally chosen st they are coprime with k (i.e. they hsare no commong factor but 1 with k) - gives best distribution.
-        #    #p1, p2 = 31, 77 (but also 3 and 7) would be coprime to 100
-        #    return torch.abs(a * p1 + b * p2) % k
+            #new_rg_atom_features[parent] = hash_pairwise(new_rg_atom_features[leaf], new_rg_atom_features[parent], 1000).to(torch.int64)
 
-        #new_rg_atom_features[parent] = hash_pairwise(new_rg_atom_features[leaf], new_rg_atom_features[parent], 1000).to(torch.int64)
+            #exit(-1)
+        # Delete multiple occurences
+        new_mapping, _ = torch.unique(new_mapping, dim=1, return_inverse=True)
 
-        #exit(-1)
-    # Delete multiple occurences
-    new_mapping, _ = torch.unique(new_mapping, dim=1, return_inverse=True)
+        new_rg_atom_features = new_rg_atom_features[np.concatenate((non_leaf_idxs, unconnected))]
 
-    new_rg_atom_features = new_rg_atom_features[np.concatenate((non_leaf_idxs, unconnected))]
+        #Indexing
+        new_rg_edge_index -= idx_reduction[new_rg_edge_index]
+        new_mapping[1] -= idx_reduction[new_mapping[1]]
+        #print(new_rg_edge_index.shape, new_rg_num_atoms,
+        #      rg_edge_index.shape, rg_num_atoms,
+        #      new_mapping.shape, mapping.shape,
+        #      flush=True)
+        # Create new data point
+        reduced_tree = ReducedGraphData(**{k: v for k, v in tree})
 
-    #Indexing
-    new_rg_edge_index -= idx_reduction[new_rg_edge_index]
-    new_mapping[1] -= idx_reduction[new_mapping[1]]
+        setattr(reduced_tree, f'rg_edge_index_{resolution}', new_rg_edge_index)
+        setattr(reduced_tree, f'mapping_{resolution}', new_mapping)
+        setattr(reduced_tree, f'rg_num_atoms_{resolution}', new_rg_num_atoms)
+        setattr(reduced_tree, f'rg_atom_features_{resolution}', new_rg_atom_features)
+        setattr(reduced_tree, f'raw_num_atoms_{resolution}', raw_num_atoms)
+    else:
+        reduced_tree = ReducedGraphData(**{k: v for k, v in tree})
 
-    # Create new data point
-    reduced_tree = ReducedGraphData(**{k: v for k, v in tree})
-
-    setattr(reduced_tree, f'rg_edge_index_{resolution}', new_rg_edge_index)
-    setattr(reduced_tree, f'mapping_{resolution}', new_mapping)
-    setattr(reduced_tree, f'rg_num_atoms_{resolution}', new_rg_num_atoms)
-    setattr(reduced_tree, f'rg_atom_features_{resolution}', new_rg_atom_features)
-    setattr(reduced_tree, f'raw_num_atoms_{resolution}', raw_num_atoms)
+        setattr(reduced_tree, f'rg_edge_index_{resolution}', torch.clone(rg_edge_index))
+        setattr(reduced_tree, f'mapping_{resolution}', torch.clone(mapping))
+        setattr(reduced_tree, f'rg_num_atoms_{resolution}', rg_num_atoms)
+        setattr(reduced_tree, f'rg_atom_features_{resolution}', torch.clone(rg_atom_features))
+        setattr(reduced_tree, f'raw_num_atoms_{resolution}', raw_num_atoms)
     return reduced_tree
 
 #reduced_tree = geetFeatureTreeWithLowerResolution(getFeatureTreeData(mols[i], 0))

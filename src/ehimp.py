@@ -214,6 +214,7 @@ class EHimp(torch.nn.Module):
         for i in range(self.rg_num):
             rgs.append(self.rg_embeddings[i](reduced_graphs[i].rg_atom_features.squeeze()))
 
+
         # GNN layers for raw graph
         for i in range(self.num_layers):
             if self.use_raw:
@@ -229,6 +230,13 @@ class EHimp(torch.nn.Module):
                     for k in range(j+1, self.rg_num):
                             rg_j = rgs[j]
                             rg_k = rgs[k]
+
+                            # Handle edge case where reduced graph has only a single atom
+                            if len(rg_j.shape) == 1:
+                                rg_j = rg_j.unsqueeze(0)
+                            if len(rg_k.shape) == 1:
+                                rg_k = rg_k.unsqueeze(0)
+
                             row_j, col_j = reduced_graphs[j].mapping
                             row_k, col_k = reduced_graphs[k].mapping
 
@@ -238,11 +246,21 @@ class EHimp(torch.nn.Module):
                             global_index_j = i * (pairs_per_layer * 2) - 1
                             global_index_k = global_index_j + (local_index - 1) * 2 + 1
 
+
                             # With virtual nodes
                             x_virt_j = scatter(rg_j[col_j], row_j, dim=0, dim_size=x.size(0), reduce='mean')
                             x_virt_k = scatter(rg_k[col_k], row_k, dim=0, dim_size=x.size(0), reduce='mean')
-                            rgs[j] += self.rg2rg_lins[global_index_j](scatter(x_virt_k[row_j], col_j, dim=0, dim_size=rg_j.size(0), reduce='mean')).relu()
-                            rgs[k] += self.rg2rg_lins[global_index_k](scatter(x_virt_j[row_k], col_k, dim=0, dim_size=rg_k.size(0), reduce='mean')).relu()
+                            rg_j = self.rg2rg_lins[global_index_j](scatter(x_virt_k[row_j], col_j, dim=0, dim_size=rg_j.size(0), reduce='mean')).relu()
+                            rg_k = self.rg2rg_lins[global_index_k](scatter(x_virt_j[row_k], col_k, dim=0, dim_size=rg_k.size(0), reduce='mean')).relu()
+
+                            # Handle edge case where reduced graph has only a single atom
+                            if len(rgs[j].shape) == 1:
+                                rg_j = rg_j.squeeze()
+                            if len(rgs[k].shape) == 1:
+                                rg_k = rg_k.squeeze()
+
+                            rgs[j] += rg_j
+                            rgs[k] += rg_k
 
             # GNN layers for reduced graphs
             for j in range(self.rg_num):
@@ -268,11 +286,18 @@ class EHimp(torch.nn.Module):
 
         # Linear layers for reduced graphs
         for i in range(self.rg_num):
+
             tree_batch = torch.repeat_interleave(reduced_graphs[i].rg_num_atoms.type(torch.int64))
             rg = rgs[i]
+
+            # Handle edge case where reduced graph only has a single atom
+            if len(rg.shape) == 1:
+                rg = rg.unsqueeze(0)
+
             rg = scatter(rg, tree_batch, dim=0, dim_size=data.y.size(0), reduce='mean')
             rg = F.dropout(rg, self.dropout, training=self.training)
             rg = self.rg_lins[i](rg)
+
             if self.use_raw:
                 x = x + rg
             else:
