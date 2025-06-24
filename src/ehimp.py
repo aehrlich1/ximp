@@ -231,7 +231,8 @@ class EHimp(torch.nn.Module):
                             rg_j = rgs[j]
                             rg_k = rgs[k]
 
-                            # Handle edge case where reduced graph has only a single atom
+                            # Handle edge case where reduced graph has only a single atom.
+                            # Potentially, a more elegant solution can be obtained by adjusting dim_size in scatter.
                             if len(rg_j.shape) == 1:
                                 rg_j = rg_j.unsqueeze(0)
                             if len(rg_k.shape) == 1:
