@@ -14,9 +14,30 @@ from torch_geometric.nn import GAT, GCN, GIN, GraphSAGE, global_add_pool
 from src.ehimp import EHimp
 from src.himp import Himp
 
+def split_mstr(mdl_vers):
+    mdl, vers = None, None
+    if 'EHIMP_' in mdl_vers:
+        mdl, vers = mdl_vers.split('_')
+    else:
+        mdl = mdl_vers
+    return mdl, vers
+
+def interpret(vers):
+    imp, igmp = True, True
+    match vers:
+        case 'a':
+            imp, igmp = True, False
+        case 'b':
+            imp, igmp = False, True
+        case 'c':
+            imp, igmp = False, False
+        case None:
+            pass
+    return imp, igmp
 
 def create_repr_model(params: dict) -> nn.Module:
-    match params["repr_model"]:
+    mdl, vers = split_mstr(params["repr_model"])
+    match mdl:#params["repr_model"]:
         case "ECFP":
             repr_model = ECFPModel(radius=params["radius"], fpSize=params["out_channels"])
         case "GIN":
@@ -59,6 +80,7 @@ def create_repr_model(params: dict) -> nn.Module:
                 dropout=params["dropout"],
             )
         case "EHIMP":
+            imp, igmp = interpret(vers)
             rg_num = int(params["use_ft"]) * params["ft_resolution"] + int(params["use_erg"])
             repr_model = EHIMPModel(
                 hidden_channels=params["hidden_channels"],
@@ -67,6 +89,8 @@ def create_repr_model(params: dict) -> nn.Module:
                 dropout=params["dropout"],
                 rg_num=rg_num,
                 rg_embedding_dim=[params["rg_embedding_dim"]] * rg_num,
+                inter_message_passing=imp,
+                inter_graph_message_passing=igmp,
             )
         case _:
             raise NotImplementedError
@@ -247,6 +271,8 @@ class EHIMPModel(nn.Module):
         dropout: float,
         rg_num: int,
         rg_embedding_dim: list,
+        inter_message_passing = bool,
+        inter_graph_message_passing = bool,
     ):
         super().__init__()
         self.model = EHimp(
@@ -256,6 +282,8 @@ class EHIMPModel(nn.Module):
             dropout=dropout,
             rg_num=rg_num,
             rg_embedding_dim=rg_embedding_dim,
+            inter_message_passing=inter_message_passing,
+            inter_graph_message_passing=inter_graph_message_passing,
         )
 
     def forward(self, data):
