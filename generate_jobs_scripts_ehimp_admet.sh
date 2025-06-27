@@ -32,7 +32,7 @@ ENCODING_DIM=8
 NUM_CV_FOLDS=5
 NUM_CV_BINS=10
 SCAFFOLD_SPLIT_VAL_SZ=0.1
-REPR_MODEL="EHIMP"
+REPR_MODEL=("EHIMP_a" "EHIMP_b" "EHIMP_c")
 OUT_DIM=1
 
 # ───────────────────  Slurm defaults – tweak as needed  ──────────────────
@@ -57,9 +57,10 @@ for tgt in "${TARGET_TASKS[@]}"; do
                       for dout in "${DROPOUT[@]}"; do
                         for use_ft in "${USE_FT[@]}"; do
                           for use_erg in "${USE_ERG[@]}"; do
+                            for rm in "${REPR_MODEL[@]}"; do
 
-                            ((idx++))
-                            sub="submit_${idx}.submit"
+                              ((idx++))
+                              sub="submit_${idx}.submit"
 
 cat > "$sub" << EOF
 #!/bin/bash
@@ -88,7 +89,7 @@ python ${PYTHON_SCRIPT} \
   --num_cv_bins ${NUM_CV_BINS} \
   --scaffold_split_val_sz ${SCAFFOLD_SPLIT_VAL_SZ} \
   --encoding_dim ${ENCODING_DIM} \
-  --repr_model ${REPR_MODEL} \
+  --repr_model ${rm} \
   --hidden_channels ${hc} \
   --out_channels ${oc} \
   --num_layers ${nl} \
@@ -101,8 +102,9 @@ python ${PYTHON_SCRIPT} \
   --out_dim ${OUT_DIM}
 EOF
 
-                            chmod +x "$sub"
-                            echo "Created $sub"
+                              chmod +x "$sub"
+                              echo "Created $sub"
+                            done
                           done
                         done
                       done
