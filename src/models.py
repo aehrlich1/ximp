@@ -14,30 +14,33 @@ from torch_geometric.nn import GAT, GCN, GIN, GraphSAGE, global_add_pool
 from src.ehimp import EHimp
 from src.himp import Himp
 
+
 def split_mstr(mdl_vers):
     mdl, vers = None, None
-    if 'EHIMP_' in mdl_vers:
-        mdl, vers = mdl_vers.split('_')
+    if "EHIMP_" in mdl_vers:
+        mdl, vers = mdl_vers.split("_")
     else:
         mdl = mdl_vers
     return mdl, vers
 
+
 def interpret(vers):
     imp, igmp = True, True
     match vers:
-        case 'a':
+        case "a":
             imp, igmp = True, False
-        case 'b':
+        case "b":
             imp, igmp = False, True
-        case 'c':
+        case "c":
             imp, igmp = False, False
         case None:
             pass
     return imp, igmp
 
+
 def create_repr_model(params: dict) -> nn.Module:
     mdl, vers = split_mstr(params["repr_model"])
-    match mdl:#params["repr_model"]:
+    match mdl:  # params["repr_model"]:
         case "ECFP":
             repr_model = ECFPModel(radius=params["radius"], fpSize=params["out_channels"])
         case "GIN":
@@ -106,7 +109,7 @@ def create_proj_model(params: dict) -> nn.Module:
     )
 
 
-class PolarisModel(nn.Module): #TODO: Should be renamed if not just Polaris anymore
+class TrainerModel(nn.Module):
     def __init__(self, repr_model: nn.Module, proj_model: nn.Module):
         super().__init__()
         self.repr_model = repr_model
@@ -271,8 +274,8 @@ class EHIMPModel(nn.Module):
         dropout: float,
         rg_num: int,
         rg_embedding_dim: list,
-        inter_message_passing = bool,
-        inter_graph_message_passing = bool,
+        inter_message_passing=bool,
+        inter_graph_message_passing=bool,
     ):
         super().__init__()
         self.model = EHimp(

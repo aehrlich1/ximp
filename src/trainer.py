@@ -15,27 +15,26 @@ from torch_geometric.data import InMemoryDataset
 from torch_geometric.loader import DataLoader
 
 from src.data import MoleculeNetDataset, PolarisDataset
-from src.models import PolarisModel, create_proj_model, create_repr_model
-from src.utils import PerformanceTracker, scaffold_split, save_dict_to_csv
+from src.models import TrainerModel, create_proj_model, create_repr_model
+from src.utils import PerformanceTracker, save_dict_to_csv, scaffold_split
 
 
-class Polaris: #TODO Should be renamed if not only Polaris anymore or split in Moleculenet and Polaris
+class Trainer:
     def __init__(self, params: dict):
         self.params: dict = params
         self.performance_tracker = PerformanceTracker(Path("./models"), id_run="x")
         self.device: str = "cpu"
-        self.train_polaris: InMemoryDataset
-        self.test_polaris: InMemoryDataset
+        self.train_dataset: InMemoryDataset
+        self.test_dataset: InMemoryDataset
         self.train_scaffold: InMemoryDataset
         self.test_scaffold: InMemoryDataset
-        self.loss_fn: nn.L1Loss #TODO: Check against self._init_loss_fn -- why do we do both?
+        self.loss_fn: nn.L1Loss  # TODO: Check against self._init_loss_fn -- why do we do both?
         self.optimizer: Optimizer
         self.model: nn.Module
 
         self._init()
 
     def _init(self):
-        # self._init_device()
         self._init_dataset()
         self._init_model()
         self._init_optimizer()
@@ -67,8 +66,10 @@ class Polaris: #TODO Should be renamed if not only Polaris anymore or split in M
             )
 
             self.train(train_fold_dataloader, valid_fold_dataloader)
-            #val_loss_list.append(self.performance_tracker.best_valid_loss)
-            val_loss_list.append(self.performance_tracker.valid_loss[-1]) # Need to use last value if epochs treated as regular hyper param
+            # val_loss_list.append(self.performance_tracker.best_valid_loss)
+            val_loss_list.append(
+                self.performance_tracker.valid_loss[-1]
+            )  # Need to use last value if epochs treated as regular hyper param
 
         self.params.update({"mean_val_loss": np.mean(val_loss_list)})
         self.params.update({"std_val_loss": np.std(val_loss_list)})
@@ -77,16 +78,20 @@ class Polaris: #TODO Should be renamed if not only Polaris anymore or split in M
         # Evaluate on test scaffold. Report MAE.
         self._init_model()
         self._init_optimizer()
-        self.train_final(self.train_scaffold) # Leads to duplicate entries in train_loss stored by performance tracker
+        self.train_final(
+            self.train_scaffold
+        )  # Leads to duplicate entries in train_loss stored by performance tracker
         preds = self.predict(self.test_scaffold)
         preds = [pred[1] for pred in preds]
         mae = mean_absolute_error(preds, self.test_scaffold.y)
         self.params.update({"mae_test_scaffold": mae})
 
-        print(f"Validation losses: {val_loss_list}") # on final epoch
-        print(f"Average validation loss: {np.mean(val_loss_list)}") # on final epochs
-        print(f"Mean absolute error for {self.params['target_task']} on test_scaffold: {mae:.3f}") # for training @ given num of epochs
-        #self.performance_tracker.save_to_csv()
+        print(f"Validation losses: {val_loss_list}")  # on final epoch
+        print(f"Average validation loss: {np.mean(val_loss_list)}")  # on final epochs
+        print(
+            f"Mean absolute error for {self.params['target_task']} on test_scaffold: {mae:.3f}"
+        )  # for training @ given num of epochs
+        # self.performance_tracker.save_to_csv()
         uniq = f"{socket.gethostname()}_{os.getpid()}_{uuid.uuid4().hex[:8]}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         save_dict_to_csv([self.params], Path(f"./results/run_{uniq}.csv"))
 
@@ -96,8 +101,8 @@ class Polaris: #TODO Should be renamed if not only Polaris anymore or split in M
             self._train_loop(train_dataloader)
             self._valid_loop(valid_dataloader)
 
-            #print(self.performance_tracker.update_best_valid_loss()) # See comment on ln 68
-            #print(epoch, self.performance_tracker.valid_loss, flush=True)
+            # print(self.performance_tracker.update_best_valid_loss()) # See comment on ln 68
+            # print(epoch, self.performance_tracker.valid_loss, flush=True)
 
     def train_final(self, train_dataset) -> None:
         train_dataloader = DataLoader(
@@ -113,7 +118,7 @@ class Polaris: #TODO Should be renamed if not only Polaris anymore or split in M
         torch.manual_seed(seed=42)
         repr_model = create_repr_model(self.params)
         proj_model = create_proj_model(self.params)
-        self.model = PolarisModel(repr_model, proj_model)
+        self.model = TrainerModel(repr_model, proj_model)
 
     def _init_loss_fn(self):
         self.loss_fn = nn.L1Loss()
@@ -130,7 +135,7 @@ class Polaris: #TODO Should be renamed if not only Polaris anymore or split in M
 
         log_transform = True if self.params["task"] == "admet" else False
 
-        self.train_polaris = PolarisDataset(
+        self.train_dataset = PolarisDataset(
             root=root,
             task=self.params["task"],
             target_task=self.params["target_task"],
@@ -142,7 +147,7 @@ class Polaris: #TODO Should be renamed if not only Polaris anymore or split in M
             ft_resolution=self.params["ft_resolution"],
         )
 
-        self.test_polaris = PolarisDataset(
+        self.test_dataset = PolarisDataset(
             root=root,
             task=self.params["task"],
             target_task=self.params["target_task"],
@@ -155,7 +160,7 @@ class Polaris: #TODO Should be renamed if not only Polaris anymore or split in M
         )
 
         self.train_scaffold, self.test_scaffold = scaffold_split(
-            dataset=self.train_polaris, test_size=self.params["scaffold_split_val_sz"]
+            dataset=self.train_dataset, test_size=self.params["scaffold_split_val_sz"]
         )
 
     def _init_molecule_net_dataset(self):
@@ -202,7 +207,7 @@ class Polaris: #TODO Should be renamed if not only Polaris anymore or split in M
 
     def _valid_loop(self, dataloader):
         self.model.eval()
-        #self.performance_tracker.valid_loss = [] #TODO why did we do this? Makes no sense to clear a list for every item you push into it.
+        # self.performance_tracker.valid_loss = [] #TODO why did we do this? Makes no sense to clear a list for every item you push into it.
         epoch_loss = 0
 
         with torch.no_grad():

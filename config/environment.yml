@@ -1,4 +1,4 @@
-name: polaris
+name: ehimp
 channels:
   - pytorch
   - conda-forge
