@@ -2,13 +2,17 @@
 This file will take care of all data related aspects.
 """
 
+import atexit
 import csv
 import os
 import shutil
+import socket
 import time
+import uuid
 import warnings
 from pathlib import Path
 from typing import List
+
 import torch
 from torch_geometric.data import Data, InMemoryDataset
 from torch_geometric.datasets import MoleculeNet
@@ -16,10 +20,6 @@ from torch_geometric.utils import from_smiles
 
 from src.transform import JunctionTree, ReducedGraph
 from src.utils import scaffold_split
-
-import uuid
-import socket
-import atexit
 
 # Ignore FutureWarnings from torch.load about weightsOnly bool != True
 warnings.simplefilter("ignore", category=FutureWarning)
@@ -45,7 +45,9 @@ class MoleculeNetDataset:
         )
         self.use_himp_preprocessing = not (use_ft or use_erg)
 
-    def _pre_transform(self, data): #TODO: rename from pre_transform if we use it as transform below?
+    def _pre_transform(
+        self, data
+    ):  # TODO: rename from pre_transform if we use it as transform below?
         if self.use_himp_preprocessing:
             data = self.junction_tree(data)  # HIMP Graph
         else:
@@ -60,6 +62,7 @@ class MoleculeNetDataset:
             transform=self._pre_transform,
             force_reload=self.force_reload,
         )
+
 
 class PolarisDataset(InMemoryDataset):
     def __init__(
@@ -91,8 +94,10 @@ class PolarisDataset(InMemoryDataset):
         else:
             raise ValueError(f"Unknown task: {task}")
 
+        # TODO Would be smarter to generate all combinations only once.
+        # Easiest solution would be to just do it OTF.
         # Create unique file names for processed files
-        self._uniq = f"{socket.gethostname()}_{os.getpid()}_{str(int(time.time()))}_{uuid.uuid4().hex[:8]}" #1:2^(8*8) chance of collision for 8 byte, up to 1:2^(8*32) possible, per process per machine per second
+        self._uniq = f"{socket.gethostname()}_{os.getpid()}_{str(int(time.time()))}_{uuid.uuid4().hex[:8]}"  # 1:2^(8*8) chance of collision for 8 byte, up to 1:2^(8*32) possible, per process per machine per second
         self._processed_file_names: List[str] = [
             f"train_{self.target_col}_{self._uniq}.pt",
             f"test_{self._uniq}.pt",
@@ -118,7 +123,7 @@ class PolarisDataset(InMemoryDataset):
 
     @property
     def processed_file_names(self):
-        #return [f"train_{self.target_col}.pt", "test.pt"]
+        # return [f"train_{self.target_col}.pt", "test.pt"]
         return self._processed_file_names
 
     def process(self):
@@ -185,8 +190,9 @@ class PolarisDataset(InMemoryDataset):
             pass  # best-effort; ignore races or permissions
 
     def _cleanup(self):
-        self._cleanup_processed_files() # TODO: decided whether this redundancy should remain
+        self._cleanup_processed_files()  # TODO: decided whether this redundancy should remain
         self._cleanup_processed_dir()
+
     def __del__(self):
         # Guaranteed attempt to delete (atexit handles interpreter shutdown)
         self._cleanup_processed_files()
@@ -217,6 +223,7 @@ class PolarisDataset(InMemoryDataset):
                 return 2
             case _:
                 raise ValueError(f"Unknown target task: {target_task}")
+
 
 if __name__ == "__main__":
     dataset = PolarisDataset(
