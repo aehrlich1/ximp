@@ -17,8 +17,8 @@ from src.himp import Himp
 
 def split_mstr(mdl_vers):
     mdl, vers = None, None
-    if "EHIMP_" in mdl_vers:
-        mdl, vers = mdl_vers.split("_")
+    if 'EHIMP_' in mdl_vers or 'HIMP_' in mdl_vers:
+        mdl, vers = mdl_vers.split('_')
     else:
         mdl = mdl_vers
     return mdl, vers
@@ -76,11 +76,13 @@ def create_repr_model(params: dict) -> nn.Module:
                 encoding_dim=params["encoding_dim"],
             )
         case "HIMP":
+            imp, igmp = interpret(vers)
             repr_model = HIMPModel(
                 hidden_channels=params["hidden_channels"],
                 out_channels=params["out_channels"],
                 num_layers=params["num_layers"],
                 dropout=params["dropout"],
+                inter_message_passing=imp
             )
         case "EHIMP":
             imp, igmp = interpret(vers)
@@ -109,7 +111,7 @@ def create_proj_model(params: dict) -> nn.Module:
     )
 
 
-class TrainerModel(nn.Module):
+class PolarisModel(nn.Module): #TODO: Should be renamed if not just Polaris anymore
     def __init__(self, repr_model: nn.Module, proj_model: nn.Module):
         super().__init__()
         self.repr_model = repr_model
@@ -252,6 +254,7 @@ class HIMPModel(nn.Module):
         out_channels: int,
         num_layers: int,
         dropout: float,
+        inter_message_passing : bool
     ):
         super().__init__()
         self.model = Himp(
@@ -259,6 +262,7 @@ class HIMPModel(nn.Module):
             out_channels=out_channels,
             num_layers=num_layers,
             dropout=dropout,
+            inter_message_passing=inter_message_passing
         )
 
     def forward(self, data):
@@ -274,8 +278,8 @@ class EHIMPModel(nn.Module):
         dropout: float,
         rg_num: int,
         rg_embedding_dim: list,
-        inter_message_passing=bool,
-        inter_graph_message_passing=bool,
+        inter_message_passing: bool,
+        inter_graph_message_passing: bool,
     ):
         super().__init__()
         self.model = EHimp(
@@ -286,7 +290,7 @@ class EHIMPModel(nn.Module):
             rg_num=rg_num,
             rg_embedding_dim=rg_embedding_dim,
             inter_message_passing=inter_message_passing,
-            inter_graph_message_passing=inter_graph_message_passing,
+            inter_graph_message_passing=inter_graph_message_passing
         )
 
     def forward(self, data):

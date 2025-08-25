@@ -39,6 +39,7 @@ if __name__ == "__main__":
         "--proj_hidden_dim", help="Projection hidden dimension", default=64, type=int
     )
     parser.add_argument("--out_dim", help="Output dimension", default=1, type=int)
+    parser.add_argument("--radius", help="ECFP radius", default=2, type=int)
 
     # Dataset parameters
     parser.add_argument(
