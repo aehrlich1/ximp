@@ -28,7 +28,7 @@ class Trainer:
         self.test_dataset: InMemoryDataset
         self.train_scaffold: InMemoryDataset
         self.test_scaffold: InMemoryDataset
-        self.loss_fn: nn.L1Loss  # TODO: Check against self._init_loss_fn -- why do we do both?
+        self.loss_fn: nn.L1Loss
         self.optimizer: Optimizer
         self.model: nn.Module
 
@@ -38,7 +38,6 @@ class Trainer:
         self._init_dataset()
         self._init_model()
         self._init_optimizer()
-        self._init_loss_fn()
 
     def run(self):
         smiles = self.train_scaffold.smiles
@@ -119,9 +118,6 @@ class Trainer:
         repr_model = create_repr_model(self.params)
         proj_model = create_proj_model(self.params)
         self.model = TrainerModel(repr_model, proj_model)
-
-    def _init_loss_fn(self):
-        self.loss_fn = nn.L1Loss()
 
     def _init_optimizer(self):
         self.optimizer = Adam(
