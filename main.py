@@ -52,7 +52,7 @@ if __name__ == "__main__":
         "--scaffold_split_val_sz", help="Scaffold spit validation slide", default=0.1, type=float
     )
 
-    # EHIMP Paramters
+    # EHIMP Parameters
     parser.add_argument(
         "--use_erg", help="Use ERG", default=False, type=str2bool, const=True, nargs="?"
     )

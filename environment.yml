@@ -1,4 +1,4 @@
-name: ehimp
+name: hoimp
 channels:
   - pytorch
   - conda-forge
