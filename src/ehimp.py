@@ -75,7 +75,6 @@ class EHimp(torch.nn.Module):
         dropout=0.0,
         rg_num=1,
         rg_embedding_dim=[8],
-        device="cpu",
         use_raw=True,
         inter_message_passing=True,
         inter_graph_message_passing=True,
@@ -90,7 +89,6 @@ class EHimp(torch.nn.Module):
             - dropout (float): Dropout probability.
             - rg_num (int): Number of reduced graphs.
             - nums_of_features (list): List of numbers of features for each reduced graph.
-            - device (str): Device for computation ('cpu' or 'cuda').
             - use_raw (bool): Flag to indicate whether to use raw graph data.
             - inter_message_passing (bool): Flag to enable inter-message passing.
 
@@ -110,7 +108,7 @@ class EHimp(torch.nn.Module):
         # Embeddings for reduced graphs
         self.rg_embeddings = ModuleList()
         for i in range(rg_num):
-            self.rg_embeddings.append(Embedding(rg_embedding_dim[i], hidden_channels)).to(device)
+            self.rg_embeddings.append(Embedding(rg_embedding_dim[i], hidden_channels))
 
         # GNN layers for raw graph data
         self.bond_encoders = ModuleList()
@@ -118,15 +116,15 @@ class EHimp(torch.nn.Module):
         self.atom_batch_norms = ModuleList()
 
         for _ in range(num_layers):
-            self.bond_encoders.append(BondEncoder(hidden_channels)).to(device)
+            self.bond_encoders.append(BondEncoder(hidden_channels))
             nn = Sequential(
                 Linear(hidden_channels, 2 * hidden_channels),
                 BatchNorm1d(2 * hidden_channels),
                 ReLU(),
                 Linear(2 * hidden_channels, hidden_channels),
             )
-            self.atom_convs.append(GINEConv(nn, train_eps=True)).to(device)
-            self.atom_batch_norms.append(BatchNorm1d(hidden_channels)).to(device)
+            self.atom_convs.append(GINEConv(nn, train_eps=True))
+            self.atom_batch_norms.append(BatchNorm1d(hidden_channels))
 
         # GNN layers for reduced graphs
         self.rg_convs = []
@@ -143,8 +141,8 @@ class EHimp(torch.nn.Module):
                     ReLU(),
                     Linear(2 * hidden_channels, hidden_channels),
                 )
-                convs.append(GINConv(nn, train_eps=True)).to(device)
-                batch_norms.append(BatchNorm1d(hidden_channels)).to(device)
+                convs.append(GINConv(nn, train_eps=True))
+                batch_norms.append(BatchNorm1d(hidden_channels))
 
             self.rg_convs.append(convs)
             self.rg_batch_norms.append(batch_norms)
@@ -156,7 +154,7 @@ class EHimp(torch.nn.Module):
             rg2raw_lins = ModuleList()
 
             for j in range(num_layers):
-                rg2raw_lins.append(Linear(hidden_channels, hidden_channels)).to(device)
+                rg2raw_lins.append(Linear(hidden_channels, hidden_channels))
 
             self.rg2raw_lins.append(rg2raw_lins)
 
@@ -167,7 +165,7 @@ class EHimp(torch.nn.Module):
                 raw2rg_lins = ModuleList()
 
                 for j in range(num_layers):
-                    raw2rg_lins.append(Linear(hidden_channels, hidden_channels)).to(device)
+                    raw2rg_lins.append(Linear(hidden_channels, hidden_channels))
 
                 self.raw2rg_lins.append(raw2rg_lins)
 
@@ -177,7 +175,7 @@ class EHimp(torch.nn.Module):
 
         self.rg_lins = ModuleList()
         for i in range(rg_num):
-            self.rg_lins.append(Linear(hidden_channels, hidden_channels)).to(device)
+            self.rg_lins.append(Linear(hidden_channels, hidden_channels))
 
         # For inter-message passing between reduced graphs
         if self.inter_graph_message_passing:
@@ -185,10 +183,8 @@ class EHimp(torch.nn.Module):
             for i in range(num_layers):
                 for j in range(self.rg_num):
                     for k in range(j + 1, self.rg_num):
-                        self.rg2rg_lins.append(Linear(hidden_channels, hidden_channels)).to(
-                            device
-                        )  # one for each direction
-                        self.rg2rg_lins.append(Linear(hidden_channels, hidden_channels)).to(device)
+                        self.rg2rg_lins.append(Linear(hidden_channels, hidden_channels))
+                        self.rg2rg_lins.append(Linear(hidden_channels, hidden_channels))
 
     def __collect_rg_from_data(self, data):
         """
@@ -202,7 +198,7 @@ class EHimp(torch.nn.Module):
             setattr(rg_data, f"mapping", getattr(data, f"mapping_{idx}"))
             setattr(rg_data, f"rg_num_atoms", getattr(data, f"rg_num_atoms_{idx}"))
             setattr(rg_data, f"rg_atom_features", getattr(data, f"rg_atom_features_{idx}"))
-            reduced_graphs.append(rg_data)  # TODO load to device
+            reduced_graphs.append(rg_data)
             idx += 1
         return reduced_graphs
 

@@ -23,7 +23,6 @@ class Trainer:
     def __init__(self, params: dict):
         self.params: dict = params
         self.performance_tracker = PerformanceTracker(Path("./models"), id_run="x")
-        self.device: str = "cpu"
         self.train_dataset: InMemoryDataset
         self.test_dataset: InMemoryDataset
         self.train_scaffold: InMemoryDataset
@@ -110,9 +109,6 @@ class Trainer:
         for _ in range(self.params["epochs"]):
             self._train_loop(train_dataloader)
 
-    def _init_device(self):
-        self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
-
     def _init_model(self):
         torch.manual_seed(seed=42)
         repr_model = create_repr_model(self.params)
@@ -190,7 +186,6 @@ class Trainer:
         epoch_loss = 0
 
         for data in dataloader:
-            data = data.to(self.device)
             out = self.model(data)
             loss = self.loss_fn(out, data.y)
             loss.backward()
@@ -208,7 +203,6 @@ class Trainer:
 
         with torch.no_grad():
             for data in dataloader:
-                data = data.to(self.device)
                 out = self.model(data)
                 loss = self.loss_fn(out, data.y)
                 epoch_loss += loss.item()
@@ -227,7 +221,7 @@ class Trainer:
         dataloader = DataLoader(dataset, batch_size=len(dataset), shuffle=False)
 
         with torch.no_grad():
-            data = next(iter(dataloader)).to(self.device)
+            data = next(iter(dataloader))
             pred = self.model(data)
 
         pred = [p.item() for p in pred]
