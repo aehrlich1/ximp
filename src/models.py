@@ -1,7 +1,3 @@
-"""
-This file will contain all of our models.
-"""
-
 import sys
 
 import torch

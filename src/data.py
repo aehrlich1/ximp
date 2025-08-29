@@ -1,7 +1,3 @@
-"""
-This file will take care of all data related aspects.
-"""
-
 import atexit
 import csv
 import os

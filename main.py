@@ -1,7 +1,3 @@
-"""
-This file will serve as the main entry point for the application.
-"""
-
 import argparse
 
 from src.trainer import Trainer

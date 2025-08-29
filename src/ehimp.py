@@ -65,7 +65,6 @@ class EHimp(torch.nn.Module):
     message passing for learning on molecular graphs. ArXiv, abs/2006.12179, 2020.
 
     Github: https://github.com/rusty1s/himp-gnn/blob/master/model.py
-
     """
 
     def __init__(
