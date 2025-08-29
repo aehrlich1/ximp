@@ -27,7 +27,7 @@ class Trainer:
         self.test_dataset: InMemoryDataset
         self.train_scaffold: InMemoryDataset
         self.test_scaffold: InMemoryDataset
-        self.loss_fn: nn.L1Loss
+        self.loss_fn: nn.L1Loss = nn.L1Loss()
         self.optimizer: Optimizer
         self.model: nn.Module
 
