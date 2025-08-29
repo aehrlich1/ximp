@@ -41,13 +41,13 @@ class MoleculeNetDataset:
         )
         self.use_himp_preprocessing = not (use_ft or use_erg)
 
-    def _pre_transform(
-        self, data
-    ):  # TODO: rename from pre_transform if we use it as transform below?
+    def _transform(self, data):
         if self.use_himp_preprocessing:
-            data = self.junction_tree(data)  # HIMP Graph
+            # HIMP Graph
+            data = self.junction_tree(data)
         else:
-            data = self.reduced_graph(data)  # Extended IMP Graphs
+            # Extended IMP Graphs
+            data = self.reduced_graph(data)
 
         return data
 
@@ -55,7 +55,7 @@ class MoleculeNetDataset:
         return MoleculeNet(
             root=self.root,
             name=self.target_task,
-            transform=self._pre_transform,
+            transform=self._transform,
             force_reload=self.force_reload,
         )
 
@@ -148,9 +148,11 @@ class PolarisDataset(InMemoryDataset):
                 data.y = y
 
                 if self.use_himp_preprocessing:
-                    data = self.junctionTree(data)  # HIMP Graph
+                    # HIMP Graph
+                    data = self.junctionTree(data)
                 else:
-                    data = self.reducedGraph(data)  # Extended HIMP Graphs
+                    # Extended HIMP Graphs
+                    data = self.reducedGraph(data)
 
                 data_list.append(data)
 
@@ -170,29 +172,14 @@ class PolarisDataset(InMemoryDataset):
 
         self.save(data_list, self.processed_paths[1])
 
-    # Cleanup routine
-    def _cleanup_processed_files(self):
-        for path in self.processed_paths:
-            try:
-                pass
-                Path(path).unlink(missing_ok=True)
-            except Exception:
-                pass  # ignore permissions or race conditions
-
     def _cleanup_processed_dir(self):
         try:
             shutil.rmtree(self.processed_dir, ignore_errors=True)
         except Exception:
             pass  # best-effort; ignore races or permissions
 
-    def _cleanup(self):
-        self._cleanup_processed_files()  # TODO: decided whether this redundancy should remain
-        self._cleanup_processed_dir()
-
     def __del__(self):
-        # Guaranteed attempt to delete (atexit handles interpreter shutdown)
-        self._cleanup_processed_files()
-        self._cleanup()
+        self._cleanup_processed_dir()
 
     @staticmethod
     def _admet_target_to_col_mapping(target_task: str) -> int:
@@ -219,12 +206,3 @@ class PolarisDataset(InMemoryDataset):
                 return 2
             case _:
                 raise ValueError(f"Unknown target task: {target_task}")
-
-
-if __name__ == "__main__":
-    dataset = PolarisDataset(
-        root="../data/polaris/admet", task="admet", target_task="MDR1-MDCKII", train=True
-    )
-    train_dataset, valid_dataset = scaffold_split(dataset)
-    print(len(train_dataset), len(valid_dataset))
-    print(dataset)
