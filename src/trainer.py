@@ -44,7 +44,6 @@ class Trainer:
 
         y_binned = pd.qcut(labels, q=self.params["num_cv_bins"], labels=False)
         skf = StratifiedKFold(n_splits=self.params["num_cv_folds"], shuffle=True, random_state=42)
-        # scaffold_kfold = ScaffoldKFold(n_splits=5, shuffle=True, random_state=42)
 
         val_loss_list = []
 
