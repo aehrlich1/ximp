@@ -1,12 +1,7 @@
 import argparse
 import csv
-from collections import defaultdict
 from pathlib import Path
 
-import numpy as np
-import pandas as pd
-import yaml
-from matplotlib import pyplot as plt
 from rdkit import Chem
 from rdkit.Chem.Scaffolds import MurckoScaffold
 from torch_geometric.data import InMemoryDataset
@@ -51,9 +46,7 @@ def scaffold_split(dataset: InMemoryDataset, test_size=0.2):
 
 
 class PerformanceTracker:
-    def __init__(self, tracking_dir: Path, id_run: str):
-        self.tracking_dir: Path = tracking_dir
-        self.id_run = id_run
+    def __init__(self):
         self.epoch = []
         self.train_loss = []
         self.valid_loss = []

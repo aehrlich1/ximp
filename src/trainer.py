@@ -22,7 +22,7 @@ from src.utils import PerformanceTracker, save_dict_to_csv, scaffold_split
 class Trainer:
     def __init__(self, params: dict):
         self.params: dict = params
-        self.performance_tracker = PerformanceTracker(Path("./models"), id_run="x")
+        self.performance_tracker = PerformanceTracker()
         self.train_dataset: InMemoryDataset
         self.test_dataset: InMemoryDataset
         self.train_scaffold: InMemoryDataset
@@ -48,7 +48,7 @@ class Trainer:
         val_loss_list = []
 
         for train_idx, valid_idx in skf.split(smiles, y_binned):
-            self._init_model()  # Reinitialize model
+            self._init_model()
             self._init_optimizer()
             self.performance_tracker.reset()
 
@@ -68,20 +68,18 @@ class Trainer:
         self.params.update({"mean_val_loss": np.mean(val_loss_list)})
         self.params.update({"std_val_loss": np.std(val_loss_list)})
 
-        # Reset model and train on train scaffold.
-        # Evaluate on test scaffold. Report MAE.
+        # Reset model and train on train scaffold. Evaluate on test scaffold. Report MAE.
         self._init_model()
         self._init_optimizer()
-        self.train_final(
-            self.train_scaffold
-        )  # Leads to duplicate entries in train_loss stored by performance tracker
+
+        self.train_final(self.train_scaffold)
         preds = self.predict(self.test_scaffold)
         preds = [pred[1] for pred in preds]
         mae = mean_absolute_error(preds, self.test_scaffold.y)
         self.params.update({"mae_test_scaffold": mae})
 
-        print(f"Validation losses: {val_loss_list}")  # on final epoch
-        print(f"Average validation loss: {np.mean(val_loss_list)}")  # on final epochs
+        print(f"Validation losses: {val_loss_list}")
+        print(f"Average validation loss: {np.mean(val_loss_list)}")
         print(f"Mean absolute error for {self.params['target_task']} on test_scaffold: {mae:.3f}")
 
         uniq = f"{socket.gethostname()}_{os.getpid()}_{uuid.uuid4().hex[:8]}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
