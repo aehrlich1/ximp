@@ -63,10 +63,7 @@ class Trainer:
             )
 
             self.train(train_fold_dataloader, valid_fold_dataloader)
-            # val_loss_list.append(self.performance_tracker.best_valid_loss)
-            val_loss_list.append(
-                self.performance_tracker.valid_loss[-1]
-            )  # Need to use last value if epochs treated as regular hyper param
+            val_loss_list.append(self.performance_tracker.valid_loss[-1])
 
         self.params.update({"mean_val_loss": np.mean(val_loss_list)})
         self.params.update({"std_val_loss": np.std(val_loss_list)})
@@ -85,10 +82,8 @@ class Trainer:
 
         print(f"Validation losses: {val_loss_list}")  # on final epoch
         print(f"Average validation loss: {np.mean(val_loss_list)}")  # on final epochs
-        print(
-            f"Mean absolute error for {self.params['target_task']} on test_scaffold: {mae:.3f}"
-        )  # for training @ given num of epochs
-        # self.performance_tracker.save_to_csv()
+        print(f"Mean absolute error for {self.params['target_task']} on test_scaffold: {mae:.3f}")
+
         uniq = f"{socket.gethostname()}_{os.getpid()}_{uuid.uuid4().hex[:8]}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         save_dict_to_csv([self.params], Path(f"./results/run_{uniq}.csv"))
 
@@ -97,9 +92,6 @@ class Trainer:
             self.performance_tracker.log({"epoch": epoch})
             self._train_loop(train_dataloader)
             self._valid_loop(valid_dataloader)
-
-            # print(self.performance_tracker.update_best_valid_loss()) # See comment on ln 68
-            # print(epoch, self.performance_tracker.valid_loss, flush=True)
 
     def train_final(self, train_dataset) -> None:
         train_dataloader = DataLoader(
@@ -197,7 +189,6 @@ class Trainer:
 
     def _valid_loop(self, dataloader):
         self.model.eval()
-        # self.performance_tracker.valid_loss = [] #TODO why did we do this? Makes no sense to clear a list for every item you push into it.
         epoch_loss = 0
 
         with torch.no_grad():
