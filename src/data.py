@@ -99,7 +99,7 @@ class PolarisDataset(InMemoryDataset):
             f"test_{self._uniq}.pt",
         ]
         # Register the same cleanup routine for both __del__ and atexit
-        atexit.register(self._cleanup)
+        atexit.register(self._cleanup_processed_dir)
 
         super().__init__(root, force_reload=force_reload)
         self.load(self.processed_paths[0] if train else self.processed_paths[1])

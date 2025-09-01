@@ -56,7 +56,7 @@ class BondEncoder(torch.nn.Module):
         return out
 
 
-class EHimp(torch.nn.Module):
+class Hoimp(torch.nn.Module):
     """
     Neural network model from the thesis.
 
@@ -93,7 +93,7 @@ class EHimp(torch.nn.Module):
             - inter_message_passing (bool): Flag to enable inter-message passing.
 
         """
-        super(EHimp, self).__init__()
+        super(Hoimp, self).__init__()
 
         self.num_layers = num_layers
         self.dropout = dropout

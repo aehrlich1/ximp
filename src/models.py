@@ -7,8 +7,8 @@ from rdkit.Chem import AllChem
 from torch import nn
 from torch_geometric.nn import GAT, GCN, GIN, GraphSAGE, global_add_pool
 
-from src.ehimp import EHimp
 from src.himp import Himp
+from src.hoimp import Hoimp
 
 
 def split_mstr(mdl_vers):
@@ -278,7 +278,7 @@ class EHIMPModel(nn.Module):
         inter_graph_message_passing: bool,
     ):
         super().__init__()
-        self.model = EHimp(
+        self.model = Hoimp(
             hidden_channels=hidden_channels,
             out_channels=out_channels,
             num_layers=num_layers,
