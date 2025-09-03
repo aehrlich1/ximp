@@ -9,7 +9,9 @@ from src.transform import ReducedGraphData
 
 class AtomEncoder(torch.nn.Module):
     """
-    Taken from: Matthias Fey, Jan-Gin Yuen, and Frank Weichert. Hierarchical inter-
+    Neural network model from the thesis.
+
+    Based on: Matthias Fey, Jan-Gin Yuen, and Frank Weichert. Hierarchical inter-
     message passing for learning on molecular graphs. ArXiv, abs/2006.12179, 2020.
 
     Github: https://github.com/rusty1s/himp-gnn/blob/master/model.py
@@ -36,6 +38,15 @@ class AtomEncoder(torch.nn.Module):
 
 
 class BondEncoder(torch.nn.Module):
+    """
+    Neural network model from the thesis.
+
+    Based on: Matthias Fey, Jan-Gin Yuen, and Frank Weichert. Hierarchical inter-
+    message passing for learning on molecular graphs. ArXiv, abs/2006.12179, 2020.
+
+    Github: https://github.com/rusty1s/himp-gnn/blob/master/model.py
+    """
+
     def __init__(self, hidden_channels):
         super(BondEncoder, self).__init__()
 
@@ -60,7 +71,7 @@ class Hoimp(torch.nn.Module):
     """
     Neural network model from the thesis.
 
-    Baed on: Matthias Fey, Jan-Gin Yuen, and Frank Weichert. Hierarchical inter-
+    Based on: Matthias Fey, Jan-Gin Yuen, and Frank Weichert. Hierarchical inter-
     message passing for learning on molecular graphs. ArXiv, abs/2006.12179, 2020.
 
     Github: https://github.com/rusty1s/himp-gnn/blob/master/model.py
