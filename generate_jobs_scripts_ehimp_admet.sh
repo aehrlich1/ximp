@@ -16,14 +16,14 @@ HIDDEN_CHANNELS=(16 32)
 OUT_CHANNELS=(16 32)
 NUM_LAYERS=(1 2 3)
 
-FT_RESOLUTIONS=(1 2 3) # Needs to be 1 if USE_FT=False to avoid sampling bias
+JT_COARSITY=(1 2 3) # Needs to be 1 if USE_JT=False to avoid sampling bias
 RG_EMBEDDING_DIMS=(16 32)
 
 DROPOUT=(0.1)
 PROJ_HIDDEN_DIM=(16 32)
 EPOCHS=(50 100 150)
 
-USE_FT=(True) # False combinations need to be ran seperately with FT_RESOLUTIONS adjusted accordingly to avoid sampling bias
+USE_JT=(True) # False combinations need to be ran seperately with JT_COARSITY adjusted accordingly to avoid sampling bias
 USE_ERG=(True) # False
 
 # ───────────────────  Constants (single-valued YAML)  ────────────────────
@@ -50,12 +50,12 @@ for tgt in "${TARGET_TASKS[@]}"; do
         for hc in "${HIDDEN_CHANNELS[@]}";  do
           for oc in "${OUT_CHANNELS[@]}";   do
             for nl in "${NUM_LAYERS[@]}";   do
-              for fr in "${FT_RESOLUTIONS[@]}"; do
+              for jc in "${FT_COARSITY[@]}"; do
                 for rg in "${RG_EMBEDDING_DIMS[@]}"; do
                   for ep in "${EPOCHS[@]}"; do
                     for phd in "${PROJ_HIDDEN_DIM[@]}"; do
                       for dout in "${DROPOUT[@]}"; do
-                        for use_ft in "${USE_FT[@]}"; do
+                        for use_jt in "${USE_JT[@]}"; do
                           for use_erg in "${USE_ERG[@]}"; do
                             for rm in "${REPR_MODEL[@]}"; do
 
@@ -95,8 +95,8 @@ python ${PYTHON_SCRIPT} \
   --num_layers ${nl} \
   --dropout ${dout} \
   --use_erg ${use_erg} \
-  --use_ft ${use_ft} \
-  --ft_resolution ${fr} \
+  --use_jt ${use_jt} \
+  --jt_coarsity ${jc} \
   --rg_embedding_dim ${rg} \
   --proj_hidden_dim ${phd} \
   --out_dim ${OUT_DIM}

@@ -29,17 +29,15 @@ class MoleculeNetDataset:
         target_task,
         force_reload=False,
         use_erg=False,
-        use_ft=False,
-        ft_resolution=0,
+        use_jt=False,
+        jt_coarsity=0,
     ):
         self.root = root
         self.target_task = target_task
         self.force_reload = force_reload
         self.junction_tree = JunctionTree()
-        self.reduced_graph = ReducedGraph(
-            use_erg=use_erg, use_ft=use_ft, ft_resolution=ft_resolution
-        )
-        self.use_himp_preprocessing = not (use_ft or use_erg)
+        self.reduced_graph = ReducedGraph(use_erg=use_erg, use_jt=use_jt, jt_coarsity=jt_coarsity)
+        self.use_himp_preprocessing = not (use_jt or use_erg)
 
     def _transform(self, data):
         if self.use_himp_preprocessing:
@@ -70,18 +68,16 @@ class PolarisDataset(InMemoryDataset):
         force_reload=True,
         log_transform=True,
         use_erg=False,
-        use_ft=False,
-        ft_resolution=0,
+        use_jt=False,
+        jt_coarsity=0,
     ):
         self.target_task = target_task
         self.train = train
         self.force_reload = force_reload
         self.log_transform = log_transform
         self.junctionTree = JunctionTree()
-        self.use_himp_preprocessing = not (use_ft or use_erg)
-        self.reducedGraph = ReducedGraph(
-            use_erg=use_erg, use_ft=use_ft, ft_resolution=ft_resolution
-        )
+        self.use_himp_preprocessing = not (use_jt or use_erg)
+        self.reducedGraph = ReducedGraph(use_erg=use_erg, use_jt=use_jt, jt_coarsity=jt_coarsity)
 
         if task == "admet":
             self.target_col = self._admet_target_to_col_mapping(target_task)

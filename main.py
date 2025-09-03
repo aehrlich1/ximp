@@ -53,11 +53,11 @@ if __name__ == "__main__":
         "--use_erg", help="Use ERG", default=False, type=str2bool, const=True, nargs="?"
     )
     parser.add_argument(
-        "--use_ft", help="Use Feature Tree", default=False, type=str2bool, const=True, nargs="?"
+        "--use_jt", help="Use Junction Tree", default=False, type=str2bool, const=True, nargs="?"
     )
-    parser.add_argument("--ft_resolution", help="Feature tree resolution", default=1, type=int)
+    parser.add_argument("--jt_coarsity", help="Junction tree coarsity", default=1, type=int)
     parser.add_argument(
-        "--rg_embedding_dim", help="Reduced graph embedding dimention", default=8, type=int
+        "--rg_embedding_dim", help="Reduced graph embedding dimension", default=8, type=int
     )
 
     input_args = parser.parse_args()

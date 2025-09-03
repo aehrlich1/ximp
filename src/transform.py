@@ -10,10 +10,10 @@ bonds = [bond for bond in BondType.__dict__.values() if isinstance(bond, BondTyp
 
 
 class ReducedGraph(object):
-    def __init__(self, use_erg, use_ft, ft_resolution):
+    def __init__(self, use_erg, use_jt, jt_coarsity):
         self.use_erg = use_erg
-        self.use_ft = use_ft
-        self.ft_resolution = ft_resolution
+        self.use_jt = use_jt
+        self.jt_coarsity = jt_coarsity
 
     def __call__(self, data):
         offset = 0
@@ -23,18 +23,18 @@ class ReducedGraph(object):
         )  # Compatibility w/ EHimp TODO change EHIMP to adherence to naming convention
         data.edge_feat = data.edge_attr  # Compatibility EHimp
 
-        if self.use_ft:
+        if self.use_jt:
             mol = Chem.MolFromSmiles(data.smiles)
             out = tree_decomposition(mol, return_vocab=True)
             data.rg_edge_index_0, data.mapping_0, data.rg_num_atoms_0, data.rg_atom_features_0 = (
                 out  # TODO base case should also be encapsulated by addFeatureTreeWithLowerResolution
             )
             data.raw_num_atoms_0 = data.x.size(0)
-            for i in range(1, self.ft_resolution):
+            for i in range(1, self.jt_coarsity):
                 data = add_feature_tree_with_lower_res(
                     data, i
                 )  # The i here is just for naming the attributes
-            offset = self.ft_resolution
+            offset = self.jt_coarsity
         if self.use_erg:
             # Generate ErG fingerprint
             mol = Chem.MolFromSmiles(data.smiles)

@@ -82,7 +82,7 @@ def create_repr_model(params: dict) -> nn.Module:
             )
         case "EHIMP":
             imp, igmp = interpret(vers)
-            rg_num = int(params["use_ft"]) * params["ft_resolution"] + int(params["use_erg"])
+            rg_num = int(params["use_jt"]) * params["jt_coarsity"] + int(params["use_erg"])
             repr_model = EHIMPModel(
                 hidden_channels=params["hidden_channels"],
                 out_channels=params["out_channels"],

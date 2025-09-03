@@ -16,7 +16,7 @@ HIDDEN_CHANNELS=(16 32)
 OUT_CHANNELS=(16 32)
 NUM_LAYERS=(1 2 3)
 
-#FT_RESOLUTIONS=(1 2 3)
+#JT_COARSITY=(1 2 3)
 #RG_EMBEDDING_DIMS=(16 32)
 
 DROPOUT=(0.1)
@@ -49,7 +49,7 @@ for tgt in "${TARGET_TASKS[@]}"; do
         for hc in "${HIDDEN_CHANNELS[@]}";  do
           for oc in "${OUT_CHANNELS[@]}";   do
             for nl in "${NUM_LAYERS[@]}";   do
-              #for fr in "${FT_RESOLUTIONS[@]}"; do
+              #for fr in "${JT_COARSITY[@]}"; do
                 for rm in "${REPR_MODEL[@]}"; do
                   for ep in "${EPOCHS[@]}"; do
                     for phd in "${PROJ_HIDDEN_DIM[@]}"; do

@@ -124,8 +124,8 @@ class Trainer:
             log_transform=log_transform,
             force_reload=True,
             use_erg=self.params["use_erg"],
-            use_ft=self.params["use_ft"],
-            ft_resolution=self.params["ft_resolution"],
+            use_jt=self.params["use_jt"],
+            jt_coarsity=self.params["jt_coarsity"],
         )
 
         self.test_dataset = PolarisDataset(
@@ -136,8 +136,8 @@ class Trainer:
             log_transform=log_transform,
             force_reload=True,
             use_erg=self.params["use_erg"],
-            use_ft=self.params["use_ft"],
-            ft_resolution=self.params["ft_resolution"],
+            use_jt=self.params["use_jt"],
+            jt_coarsity=self.params["jt_coarsity"],
         )
 
         self.train_scaffold, self.test_scaffold = scaffold_split(
@@ -151,8 +151,8 @@ class Trainer:
             target_task=self.params["target_task"],
             force_reload=False,
             use_erg=self.params["use_erg"],
-            use_ft=self.params["use_ft"],
-            ft_resolution=self.params["ft_resolution"],
+            use_jt=self.params["use_jt"],
+            jt_coarsity=self.params["jt_coarsity"],
         ).create_dataset()
 
         self.train_scaffold, self.test_scaffold = scaffold_split(
