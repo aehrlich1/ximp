@@ -60,7 +60,6 @@ class Hoimp(torch.nn.Module):
     """
     Neural network model from the thesis.
 
-
     Baed on: Matthias Fey, Jan-Gin Yuen, and Frank Weichert. Hierarchical inter-
     message passing for learning on molecular graphs. ArXiv, abs/2006.12179, 2020.
 
@@ -78,21 +77,7 @@ class Hoimp(torch.nn.Module):
         use_raw=True,
         inter_message_passing=True,
         inter_graph_message_passing=True,
-    ):  # TODO Hyperparameters need either be infered or  go in config
-        """
-        Constructor for NetCustom.
-
-        Parameters:
-            - hidden_channels (int): Number of hidden channels in the model.
-            - out_channels (int): Number of output channels in the model.
-            - num_layers (int): Number of GNN layers in the model.
-            - dropout (float): Dropout probability.
-            - rg_num (int): Number of reduced graphs.
-            - nums_of_features (list): List of numbers of features for each reduced graph.
-            - use_raw (bool): Flag to indicate whether to use raw graph data.
-            - inter_message_passing (bool): Flag to enable inter-message passing.
-
-        """
+    ):
         super(Hoimp, self).__init__()
 
         self.num_layers = num_layers
@@ -203,17 +188,6 @@ class Hoimp(torch.nn.Module):
         return reduced_graphs
 
     def forward(self, data):
-        """
-        Forward pass of the model.
-
-        Parameters:
-            - data: Graph data for raw graph.
-            - reduced_graphs: List of reduced graph data.
-
-        Returns:
-            - x: Model output.
-
-        """
         reduced_graphs = self.__collect_rg_from_data(data)
         rg_num = len(reduced_graphs)
 
