@@ -1,74 +1,12 @@
-# Based on: https://github.com/rusty1s/himp-gnn/blob/master/transform.py
 import numpy as np
 import torch
 from rdkit import Chem
-from rdkit.Chem.rdReducedGraphs import GenerateMolExtendedReducedGraph
 from rdkit.Chem.rdchem import BondType
+from rdkit.Chem.rdReducedGraphs import GenerateMolExtendedReducedGraph
 from torch_geometric.data import Data
 from torch_geometric.utils import tree_decomposition
 
 bonds = [bond for bond in BondType.__dict__.values() if isinstance(bond, BondType)]
-
-
-def mol_from_data(data):
-    """
-    DEPRECATED - NOT IN USE ANYMORE
-    Converts a PyG Data object to an RDKit Mol object.
-    TBD: Remove this function as there exists a PyG variant: https://pytorch-geometric.readthedocs.io/en/2.6.1/_modules/torch_geometric/utils/smiles.html
-    """
-    mol = Chem.RWMol()
-
-    x = data.x if data.x.dim() == 1 else data.x[:, 0]
-    for z in x.tolist():
-        mol.AddAtom(Chem.Atom(z))
-
-    row, col = data.edge_index
-    mask = row < col
-    row, col = row[mask].tolist(), col[mask].tolist()
-
-    bond_type = data.edge_attr
-    bond_type = bond_type if bond_type.dim() == 1 else bond_type[:, 0]
-    bond_type = bond_type[mask].tolist()
-
-    for i, j, bond in zip(row, col, bond_type):
-        # assert bond >= 1 and bond <= 4
-        mol.AddBond(i, j, bonds[bond - 1])
-
-    return mol.GetMol()
-
-
-class JunctionTreeData(Data):
-    def __inc__(self, key, item, *args):
-        if key == "tree_edge_index":
-            return self.x_clique.size(0)
-        elif key == "atom2clique_index":
-            return torch.tensor([[self.x.size(0)], [self.x_clique.size(0)]])
-        else:
-            return super(JunctionTreeData, self).__inc__(key, item, *args)
-
-
-class JunctionTree(object):
-    def __call__(self, data):
-        mol = mol_from_data(data)
-        out = tree_decomposition(mol, return_vocab=True)
-        tree_edge_index, atom2clique_index, num_cliques, x_clique = out
-
-        data = JunctionTreeData(**{k: v for k, v in data})
-
-        data.tree_edge_index = tree_edge_index
-        data.atom2clique_index = atom2clique_index
-        data.num_cliques = num_cliques
-        data.x_clique = x_clique
-
-        return data
-
-
-class OGBTransform(object):
-    # OGB saves atom and bond types zero-index based. We need to revert that.
-    def __call__(self, data):
-        data.x[:, 0] += 1
-        data.edge_attr[:, 0] += 1
-        return data
 
 
 class ReducedGraph(object):
@@ -93,14 +31,14 @@ class ReducedGraph(object):
             )
             data.raw_num_atoms_0 = data.x.size(0)
             for i in range(1, self.ft_resolution):
-                data = addFeatureTreeWithLowerResolution(
+                data = add_feature_tree_with_lower_res(
                     data, i
                 )  # The i here is just for naming the attributes
             offset = self.ft_resolution
         if self.use_erg:
             # Generate ErG fingerprint
             mol = Chem.MolFromSmiles(data.smiles)
-            erg = getErGData(
+            erg = get_erg_data(
                 mol, data.x.size(0)
             )  # TODO standardize so it adds graphs just as addFeatureTreeWithLowerResolution
             setattr(data, f"rg_edge_index_{offset}", erg.rg_edge_index)
@@ -152,7 +90,7 @@ class ReducedGraphData(Data):
             return super().__inc__(key, value, *args, **kwargs)
 
 
-def addFeatureTreeWithLowerResolution(tree, resolution=1):
+def add_feature_tree_with_lower_res(tree, resolution=1):
     rg_edge_index = getattr(tree, f"rg_edge_index_{resolution - 1}")
     rg_num_atoms = getattr(tree, f"rg_num_atoms_{resolution - 1}")
     raw_num_atoms = getattr(tree, f"raw_num_atoms_{resolution - 1}")
@@ -238,16 +176,7 @@ def addFeatureTreeWithLowerResolution(tree, resolution=1):
     return reduced_tree
 
 
-# reduced_tree = geetFeatureTreeWithLowerResolution(getFeatureTreeData(mols[i], 0))
-
-
-def mol_with_atom_index(mol):
-    for atom in mol.GetAtoms():
-        atom.SetAtomMapNum(atom.GetIdx())
-    return mol
-
-
-def moleculeAtomsProperties(molecule):
+def molecule_atoms_props(molecule):
     """
     Extracts atom properties from a given RDKit Mol object using SMARTS patterns.
 
@@ -295,7 +224,7 @@ def moleculeAtomsProperties(molecule):
     return properties
 
 
-def findRecognizedRings(mol):
+def find_recognized_rings(mol):
     """
     Finds rings in a molecule with a ring size less than 8.
 
@@ -310,7 +239,7 @@ def findRecognizedRings(mol):
     return recognized_rings
 
 
-def constructErgFromFp(erg_fp):
+def construct_erg_from_fp(erg_fp):
     """
     Construct an ErG (Extended Graph) from a given fingerprint.
 
@@ -358,7 +287,7 @@ def constructErgFromFp(erg_fp):
     return atom_features, erg_edge_index, num_of_rings
 
 
-def createErgRingMapping(molecule, erg_num_atoms, num_of_rings):
+def create_erg_ring_mapping(molecule, erg_num_atoms, num_of_rings):
     """
     Create ring mapping from the original graph to ErG.
 
@@ -372,7 +301,7 @@ def createErgRingMapping(molecule, erg_num_atoms, num_of_rings):
           The first row contains indices of atoms from the original graph mapped to a ring atoms of ErG.
           The second row contains indices of the corresponding ring nodes in the resulting ErG.
     """
-    recognized_rings = findRecognizedRings(molecule)
+    recognized_rings = find_recognized_rings(molecule)
 
     cumulative_ring_sizes = np.append(0, np.cumsum(list(map(len, recognized_rings))))
 
@@ -389,7 +318,7 @@ def createErgRingMapping(molecule, erg_num_atoms, num_of_rings):
     return rings_map
 
 
-def createErgMapping(molecule, num_of_rings, erg_num_atoms, atoms_with_properties_flattened):
+def create_erg_mapping(molecule, num_of_rings, erg_num_atoms, atoms_with_properties_flattened):
     """
     Create a mapping for the Extended Graph (ErG) from a given molecule.
 
@@ -407,7 +336,7 @@ def createErgMapping(molecule, num_of_rings, erg_num_atoms, atoms_with_propertie
     """
 
     # Create a mapping for atoms that are part of recognized rings
-    rings_map = createErgRingMapping(molecule, erg_num_atoms, num_of_rings)
+    rings_map = create_erg_ring_mapping(molecule, erg_num_atoms, num_of_rings)
 
     # Mapping for atoms with specific properties
     prop_map = np.empty((2, molecule.GetNumAtoms()), dtype=int)
@@ -440,7 +369,7 @@ def createErgMapping(molecule, num_of_rings, erg_num_atoms, atoms_with_propertie
     return erg_mapping, unmapped
 
 
-def getErGData(molecule, num_of_nodes):
+def get_erg_data(molecule, num_of_nodes):
     """
     Get data for the Extended Reduced Graph (ErG) from a given molecule.
 
@@ -457,16 +386,16 @@ def getErGData(molecule, num_of_nodes):
     erg_num_atoms = erg_fp.GetNumAtoms()
 
     # Construct ErG features and edges
-    atom_features, erg_edge_index, num_of_rings = constructErgFromFp(erg_fp)
+    atom_features, erg_edge_index, num_of_rings = construct_erg_from_fp(erg_fp)
 
     # Find atoms with specific properties in the molecule
-    atoms_with_properties = moleculeAtomsProperties(molecule)
+    atoms_with_properties = molecule_atoms_props(molecule)
     atoms_with_properties_flattened = np.unique(
         np.array([index for tpl in atoms_with_properties for index in tpl]).flatten()
     )
 
     # Create mapping for ErG
-    erg_mapping, unmapped = createErgMapping(
+    erg_mapping, unmapped = create_erg_mapping(
         molecule, num_of_rings, erg_num_atoms, atoms_with_properties_flattened
     )
 
@@ -484,3 +413,73 @@ def getErGData(molecule, num_of_nodes):
     data.raw_num_atoms = num_of_nodes
 
     return data
+
+
+def mol_from_data(data):
+    """
+    Converts a PyG Data object to an RDKit Mol object.
+    TBD: Remove this function as there exists a PyG variant: https://pytorch-geometric.readthedocs.io/en/2.6.1/_modules/torch_geometric/utils/smiles.html
+    """
+    mol = Chem.RWMol()
+
+    x = data.x if data.x.dim() == 1 else data.x[:, 0]
+    for z in x.tolist():
+        mol.AddAtom(Chem.Atom(z))
+
+    row, col = data.edge_index
+    mask = row < col
+    row, col = row[mask].tolist(), col[mask].tolist()
+
+    bond_type = data.edge_attr
+    bond_type = bond_type if bond_type.dim() == 1 else bond_type[:, 0]
+    bond_type = bond_type[mask].tolist()
+
+    for i, j, bond in zip(row, col, bond_type):
+        # assert bond >= 1 and bond <= 4
+        mol.AddBond(i, j, bonds[bond - 1])
+
+    return mol.GetMol()
+
+
+class JunctionTreeData(Data):
+    """
+    Neural network model from the thesis.
+
+    Based on: Matthias Fey, Jan-Gin Yuen, and Frank Weichert. Hierarchical inter-
+    message passing for learning on molecular graphs. ArXiv, abs/2006.12179, 2020.
+
+    Github: https://github.com/rusty1s/himp-gnn/blob/master/model.py
+    """
+
+    def __inc__(self, key, item, *args):
+        if key == "tree_edge_index":
+            return self.x_clique.size(0)
+        elif key == "atom2clique_index":
+            return torch.tensor([[self.x.size(0)], [self.x_clique.size(0)]])
+        else:
+            return super(JunctionTreeData, self).__inc__(key, item, *args)
+
+
+class JunctionTree(object):
+    """
+    Neural network model from the thesis.
+
+    Based on: Matthias Fey, Jan-Gin Yuen, and Frank Weichert. Hierarchical inter-
+    message passing for learning on molecular graphs. ArXiv, abs/2006.12179, 2020.
+
+    Github: https://github.com/rusty1s/himp-gnn/blob/master/model.py
+    """
+
+    def __call__(self, data):
+        mol = mol_from_data(data)
+        out = tree_decomposition(mol, return_vocab=True)
+        tree_edge_index, atom2clique_index, num_cliques, x_clique = out
+
+        data = JunctionTreeData(**{k: v for k, v in data})
+
+        data.tree_edge_index = tree_edge_index
+        data.atom2clique_index = atom2clique_index
+        data.num_cliques = num_cliques
+        data.x_clique = x_clique
+
+        return data
