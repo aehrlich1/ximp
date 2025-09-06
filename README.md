@@ -7,6 +7,13 @@
 - [ ] Clean up `README.md`
 
 
+### Bugfix specifics
+- [ ] Fix `hidden_channels` parameter in `HIMP.py` and `HOIMP.py`
+- [ ] Ensure that GCN models use edge features
+- [ ] Rework ErG Graph construction. Especially include "endcap" and "flip-flop" flags.
+- [ ] During evaluation, run each experiment multiple times with different seeds. Report mean and std.
+
+
 ## Introduction
 This is the code repository for our future paper title "Molecular Hierarchical Inter-Message Passing".
 
