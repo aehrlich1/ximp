@@ -1,10 +1,11 @@
 # Molecular Hierarchical Inter-Message Passing
 
-## Backlog
+## TODO
+- [ ] Clean up `transform.py`
+- [ ] Clean up `results_analysis.ipynb` @Lorenz
+- [ ] Clean up slurm submission scripts for HPC
+- [ ] Clean up `README.md`
 
-**Polaris Dataset:**
-- [ ] Run a set of hyperparameters ($\approx 10 000$) using `Train Dataset` and evaluate on `Test Dataset`
-- [ ] Run a set of hyperparameters ($\approx 10 000$) using `Train Scaffold` and evaluate on `Test Dataset`
 
 ## Introduction
 This is the code repository for our future paper title "Molecular Hierarchical Inter-Message Passing".
