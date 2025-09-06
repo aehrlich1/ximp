@@ -4,51 +4,7 @@ from torch.nn import BatchNorm1d, Embedding, Linear, ModuleList, ReLU, Sequentia
 from torch_geometric.nn import GINConv, GINEConv
 from torch_scatter import scatter
 
-
-class AtomEncoder(torch.nn.Module):
-    def __init__(self, hidden_channels):
-        super(AtomEncoder, self).__init__()
-
-        self.embeddings = torch.nn.ModuleList()
-
-        for i in range(9):
-            self.embeddings.append(Embedding(100, hidden_channels))
-
-    def reset_parameters(self):
-        for embedding in self.embeddings:
-            embedding.reset_parameters()
-
-    def forward(self, x):
-        if x.dim() == 1:
-            x = x.unsqueeze(1)
-
-        out = 0
-        for i in range(x.size(1)):
-            out += self.embeddings[i](x[:, i])
-        return out
-
-
-class BondEncoder(torch.nn.Module):
-    def __init__(self, hidden_channels):
-        super(BondEncoder, self).__init__()
-
-        self.embeddings = torch.nn.ModuleList()
-
-        for i in range(3):
-            self.embeddings.append(Embedding(100, hidden_channels))
-
-    def reset_parameters(self):
-        for embedding in self.embeddings:
-            embedding.reset_parameters()
-
-    def forward(self, edge_attr):
-        if edge_attr.dim() == 1:
-            edge_attr = edge_attr.unsqueeze(1)
-
-        out = 0
-        for i in range(edge_attr.size(1)):
-            out += self.embeddings[i](edge_attr[:, i])
-        return out
+from src.encoders import AtomEncoder, BondEncoder
 
 
 class Himp(torch.nn.Module):
@@ -148,9 +104,7 @@ class Himp(torch.nn.Module):
 
                 x_clique = x_clique + F.relu(
                     self.atom2clique_lins[i](
-                        scatter(
-                            x[row], col, dim=0, dim_size=x_clique.size(0), reduce="mean"
-                        )
+                        scatter(x[row], col, dim=0, dim_size=x_clique.size(0), reduce="mean")
                     )
                 )
 
@@ -161,9 +115,7 @@ class Himp(torch.nn.Module):
 
                 x = x + F.relu(
                     self.clique2atom_lins[i](
-                        scatter(
-                            x_clique[col], row, dim=0, dim_size=x.size(0), reduce="mean"
-                        )
+                        scatter(x_clique[col], row, dim=0, dim_size=x.size(0), reduce="mean")
                     )
                 )
 
@@ -173,9 +125,7 @@ class Himp(torch.nn.Module):
 
         if self.inter_message_passing:
             tree_batch = torch.repeat_interleave(data.num_cliques)
-            x_clique = scatter(
-                x_clique, tree_batch, dim=0, dim_size=x.size(0), reduce="mean"
-            )
+            x_clique = scatter(x_clique, tree_batch, dim=0, dim_size=x.size(0), reduce="mean")
             x_clique = F.dropout(x_clique, self.dropout, training=self.training)
             x_clique = self.clique_lin(x_clique)
             x = x + x_clique

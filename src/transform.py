@@ -443,12 +443,8 @@ def mol_from_data(data):
 
 class JunctionTreeData(Data):
     """
-    Neural network model from the thesis.
-
-    Based on: Matthias Fey, Jan-Gin Yuen, and Frank Weichert. Hierarchical inter-
-    message passing for learning on molecular graphs. ArXiv, abs/2006.12179, 2020.
-
-    Github: https://github.com/rusty1s/himp-gnn/blob/master/model.py
+    Based on implementation from HIMP-GNN
+    https://github.com/rusty1s/himp-gnn
     """
 
     def __inc__(self, key, item, *args):
@@ -462,12 +458,8 @@ class JunctionTreeData(Data):
 
 class JunctionTree(object):
     """
-    Neural network model from the thesis.
-
-    Based on: Matthias Fey, Jan-Gin Yuen, and Frank Weichert. Hierarchical inter-
-    message passing for learning on molecular graphs. ArXiv, abs/2006.12179, 2020.
-
-    Github: https://github.com/rusty1s/himp-gnn/blob/master/model.py
+    Based on implementation from HIMP-GNN
+    https://github.com/rusty1s/himp-gnn
     """
 
     def __call__(self, data):

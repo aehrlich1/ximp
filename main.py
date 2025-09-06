@@ -29,6 +29,10 @@ if __name__ == "__main__":
     parser.add_argument(
         "--encoding_dim", help="Encoding dimension of features", default=8, type=int
     )
+
+    # --node_embedding_dim=8
+    # --edge_embedding_dim=8
+
     parser.add_argument("--hidden_channels", help="Number of hidden channels", default=32, type=int)
     parser.add_argument("--out_channels", help="Number of output channels", default=64, type=int)
     parser.add_argument(

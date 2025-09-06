@@ -4,77 +4,14 @@ from torch.nn import BatchNorm1d, Embedding, Linear, ModuleList, ReLU, Sequentia
 from torch_geometric.nn import GINConv, GINEConv
 from torch_scatter import scatter
 
+from src.encoders import AtomEncoder, BondEncoder
 from src.transform import ReducedGraphData
-
-
-class AtomEncoder(torch.nn.Module):
-    """
-    Neural network model from the thesis.
-
-    Based on: Matthias Fey, Jan-Gin Yuen, and Frank Weichert. Hierarchical inter-
-    message passing for learning on molecular graphs. ArXiv, abs/2006.12179, 2020.
-
-    Github: https://github.com/rusty1s/himp-gnn/blob/master/model.py
-    """
-
-    def __init__(self, hidden_channels):
-        super(AtomEncoder, self).__init__()
-
-        self.embeddings = torch.nn.ModuleList()
-
-        for i in range(9):
-            emb = Embedding(100, hidden_channels)  # was 100, increased for the hashing thing
-            torch.nn.init.xavier_uniform_(emb.weight.data)
-            self.embeddings.append(emb)
-
-    def forward(self, x):
-        if x.dim() == 1:
-            x = x.unsqueeze(1)
-
-        out = 0
-        for i in range(x.size(1)):
-            out += self.embeddings[i](x[:, i])
-        return out
-
-
-class BondEncoder(torch.nn.Module):
-    """
-    Neural network model from the thesis.
-
-    Based on: Matthias Fey, Jan-Gin Yuen, and Frank Weichert. Hierarchical inter-
-    message passing for learning on molecular graphs. ArXiv, abs/2006.12179, 2020.
-
-    Github: https://github.com/rusty1s/himp-gnn/blob/master/model.py
-    """
-
-    def __init__(self, hidden_channels):
-        super(BondEncoder, self).__init__()
-
-        self.embeddings = torch.nn.ModuleList()
-
-        for i in range(3):
-            emb = Embedding(100, hidden_channels)
-            torch.nn.init.xavier_uniform_(emb.weight.data)
-            self.embeddings.append(emb)
-
-    def forward(self, edge_attr):
-        if edge_attr.dim() == 1:
-            edge_attr = edge_attr.unsqueeze(1)
-
-        out = 0
-        for i in range(edge_attr.size(1)):
-            out += self.embeddings[i](edge_attr[:, i])
-        return out
 
 
 class Hoimp(torch.nn.Module):
     """
-    Neural network model from the thesis.
-
-    Based on: Matthias Fey, Jan-Gin Yuen, and Frank Weichert. Hierarchical inter-
-    message passing for learning on molecular graphs. ArXiv, abs/2006.12179, 2020.
-
-    Github: https://github.com/rusty1s/himp-gnn/blob/master/model.py
+    Based on implementation from HIMP-GNN
+    https://github.com/rusty1s/himp-gnn
     """
 
     def __init__(
