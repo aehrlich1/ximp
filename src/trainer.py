@@ -99,7 +99,7 @@ class Trainer:
             self._train_loop(train_dataloader)
 
     def _init_model(self):
-        torch.manual_seed(seed=42)
+        torch.manual_seed(seed=self.params.get("seed", 42))
         repr_model = create_repr_model(self.params)
         proj_model = create_proj_model(self.params)
         self.model = TrainerModel(repr_model, proj_model)

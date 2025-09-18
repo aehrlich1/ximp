@@ -59,6 +59,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--rg_embedding_dim", help="Reduced graph embedding dimension", default=8, type=int
     )
+    parser.add_argument("--seed", help="Seed to set", default=42, type=int)
 
     input_args = parser.parse_args()
     input_args_dict = vars(input_args)
