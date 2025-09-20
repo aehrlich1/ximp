@@ -21,6 +21,7 @@ __pycache__
 # Ignore MoleculeNet dataset files
 /data/molecule_net
 
+# Ignore results files, but not directories
 /results/*
 !/results/**/
 
