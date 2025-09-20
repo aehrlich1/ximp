@@ -1,4 +1,4 @@
-name: hoimp
+name: ximp
 channels:
   - conda-forge
   - defaults
