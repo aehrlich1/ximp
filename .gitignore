@@ -21,5 +21,7 @@ __pycache__
 # Ignore MoleculeNet dataset files
 /data/molecule_net
 
-results/
+/results/*
+!/results/**/
+
 results_tmp/

@@ -1,0 +1,2 @@
+task,target_task,batch_size,dropout,epochs,lr,weight_decay,repr_model,num_layers,encoding_dim,hidden_channels,out_channels,proj_hidden_dim,out_dim,num_cv_folds,num_cv_bins,scaffold_split_val_sz,use_erg,use_jt,jt_coarsity,rg_embedding_dim,radius,seed,mean_val_loss,std_val_loss,mae_test_scaffold
+potency,pIC50 (SARS-CoV-2 Mpro),64,0.1,100,0.001,0.0001,GAT,3,8,16,16,32,1,5,10,0.1,False,False,1,8,,2025,0.6567934215068817,0.049523836306720796,0.39548666336957145

@@ -1,0 +1,2 @@
+task,target_task,batch_size,dropout,epochs,lr,weight_decay,repr_model,num_layers,encoding_dim,hidden_channels,out_channels,proj_hidden_dim,out_dim,num_cv_folds,num_cv_bins,scaffold_split_val_sz,use_erg,use_jt,jt_coarsity,rg_embedding_dim,radius,seed,mean_val_loss,std_val_loss,mae_test_scaffold
+molecule_net,ESOL,64,0.1,150,0.001,0.0001,ECFP,3,8,32,2048,32,1,5,10,0.1,False,False,1,8,2,7,0.9871660828590393,0.05980435740666299,1.2223848877227412
