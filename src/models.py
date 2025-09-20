@@ -80,7 +80,7 @@ def create_repr_model(params: dict) -> nn.Module:
                 dropout=params["dropout"],
                 inter_message_passing=imp,
             )
-        case "EHIMP":
+        case "HOIMP":
             imp, igmp = interpret(vers)
             rg_num = int(params["use_jt"]) * params["jt_coarsity"] + int(params["use_erg"])
             repr_model = EHIMPModel(
