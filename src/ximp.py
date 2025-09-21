@@ -67,7 +67,7 @@ class BondEncoder(torch.nn.Module):
         return out
 
 
-class Hoimp(torch.nn.Module):
+class Ximp(torch.nn.Module):
     """
     Neural network model from the thesis.
 
@@ -89,7 +89,7 @@ class Hoimp(torch.nn.Module):
         inter_message_passing=True,
         inter_graph_message_passing=True,
     ):
-        super(Hoimp, self).__init__()
+        super(Ximp, self).__init__()
 
         self.num_layers = num_layers
         self.dropout = dropout

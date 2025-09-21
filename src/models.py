@@ -8,12 +8,12 @@ from torch import nn
 from torch_geometric.nn import GAT, GCN, GIN, GraphSAGE, global_add_pool
 
 from src.himp import Himp
-from src.hoimp import Hoimp
+from src.ximp import Ximp
 
 
 def split_mstr(mdl_vers):
     mdl, vers = None, None
-    if "EHIMP_" in mdl_vers or "HIMP_" in mdl_vers:
+    if "XIMP_" in mdl_vers or "HIMP_" in mdl_vers:
         mdl, vers = mdl_vers.split("_")
     else:
         mdl = mdl_vers
@@ -73,17 +73,17 @@ def create_repr_model(params: dict) -> nn.Module:
             )
         case "HIMP":
             imp, igmp = interpret(vers)
-            repr_model = HIMPModel(
+            repr_model = HimpModel(
                 hidden_channels=params["hidden_channels"],
                 out_channels=params["out_channels"],
                 num_layers=params["num_layers"],
                 dropout=params["dropout"],
                 inter_message_passing=imp,
             )
-        case "HOIMP":
+        case "XIMP":
             imp, igmp = interpret(vers)
             rg_num = int(params["use_jt"]) * params["jt_coarsity"] + int(params["use_erg"])
-            repr_model = EHIMPModel(
+            repr_model = XimpModel(
                 hidden_channels=params["hidden_channels"],
                 out_channels=params["out_channels"],
                 num_layers=params["num_layers"],
@@ -243,7 +243,7 @@ class GraphSAGEModel(nn.Module):
         return h_G
 
 
-class HIMPModel(nn.Module):
+class HimpModel(nn.Module):
     def __init__(
         self,
         hidden_channels: int,
@@ -265,7 +265,7 @@ class HIMPModel(nn.Module):
         return self.model(data)
 
 
-class EHIMPModel(nn.Module):
+class XimpModel(nn.Module):
     def __init__(
         self,
         hidden_channels: int,
@@ -278,7 +278,7 @@ class EHIMPModel(nn.Module):
         inter_graph_message_passing: bool,
     ):
         super().__init__()
-        self.model = Hoimp(
+        self.model = Ximp(
             hidden_channels=hidden_channels,
             out_channels=out_channels,
             num_layers=num_layers,

@@ -20,8 +20,8 @@ class ReducedGraph(object):
         data = ReducedGraphData(**{k: v for k, v in data})
         data.node_feat = (
             data.x
-        )  # Compatibility w/ EHimp TODO change EHIMP to adherence to naming convention
-        data.edge_feat = data.edge_attr  # Compatibility EHimp
+        )  # Compatibility w/ XIMP TODO change XIMP to adherence to naming convention
+        data.edge_feat = data.edge_attr  # Compatibility XIMP
 
         if self.use_jt:
             mol = Chem.MolFromSmiles(data.smiles)

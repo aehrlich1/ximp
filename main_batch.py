@@ -11,7 +11,7 @@ from main import main
 df = pd.read_csv("./hyperparams/global_best_params.csv")
 
 # Remove rows that have the following values in "repr_model" column
-remove_values = ["HIMP (b)", "HOIMP (a)", "HOIMP (b)", "HOIMP (c)"]
+remove_values = ["HIMP (b)", "XIMP (a)", "XIMP (b)", "XIMP (c)"]
 df = df[~df["repr_model"].isin(remove_values)]
 
 # Remove unused columns

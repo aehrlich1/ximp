@@ -1,7 +1,7 @@
 [project]
-name = "HOIMP"
+name = "XIMP"
 version = "0.1.0"
-description = "Molecular Property Prediction using Higher-Order inter-message passing"
+description = "Cross Graph Inter-Message Passing for Molecule Property Prediction"
 readme = "README.md"
 requires-python = ">=3.12"
 
