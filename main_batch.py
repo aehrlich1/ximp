@@ -17,9 +17,6 @@ df = df[~df["repr_model"].isin(remove_values)]
 # Remove unused columns
 df = df.drop(columns=["mean_val_loss", "std_val_loss", "source_file", "mae_test_scaffold"])
 
-# Rename columns to new names
-df = df.rename(columns={"use_ft": "use_jt", "ft_resolution": "jt_coarsity"})
-
 # Cast radius from float -> int
 df["radius"] = df["radius"].astype("Int64")
 
