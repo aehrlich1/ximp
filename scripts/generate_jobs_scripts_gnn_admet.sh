@@ -61,7 +61,7 @@ for tgt in "${TARGET_TASKS[@]}"; do
 cat > "$sub" << EOF
 #!/bin/bash
 #SBATCH --job-name="Polaris: ${tgt} bs=${bs} lr=${lr} hc=${hc}"
-#SBATCH --comment="FG Data Mining / Lorenz Kummer"
+#SBATCH --comment="FG Data Mining"
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --time=${SLURM_TIME}
@@ -71,7 +71,7 @@ cat > "$sub" << EOF
 #SBATCH --requeue
 
 export ENV_MODE=permanant
-export ENV_NAME="lorenz_bitflips"
+export ENV_NAME="ximp"
 module load miniforge
 
 python ${PYTHON_SCRIPT} \

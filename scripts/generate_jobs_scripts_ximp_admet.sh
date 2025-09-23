@@ -32,7 +32,7 @@ ENCODING_DIM=8
 NUM_CV_FOLDS=5
 NUM_CV_BINS=10
 SCAFFOLD_SPLIT_VAL_SZ=0.1
-REPR_MODEL=("EHIMP_a" "EHIMP_b" "EHIMP_c")
+REPR_MODEL=("XIMP_a" "XIMP_b" "XIMP_c")
 OUT_DIM=1
 
 # ───────────────────  Slurm defaults – tweak as needed  ──────────────────
@@ -50,7 +50,7 @@ for tgt in "${TARGET_TASKS[@]}"; do
         for hc in "${HIDDEN_CHANNELS[@]}";  do
           for oc in "${OUT_CHANNELS[@]}";   do
             for nl in "${NUM_LAYERS[@]}";   do
-              for jc in "${FT_COARSITY[@]}"; do
+              for jc in "${JT_COARSITY[@]}"; do
                 for rg in "${RG_EMBEDDING_DIMS[@]}"; do
                   for ep in "${EPOCHS[@]}"; do
                     for phd in "${PROJ_HIDDEN_DIM[@]}"; do
@@ -65,7 +65,7 @@ for tgt in "${TARGET_TASKS[@]}"; do
 cat > "$sub" << EOF
 #!/bin/bash
 #SBATCH --job-name="Polaris: ${tgt} bs=${bs} lr=${lr} hc=${hc}"
-#SBATCH --comment="FG Data Mining / Lorenz Kummer"
+#SBATCH --comment="FG Data Mining"
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --time=${SLURM_TIME}
@@ -75,7 +75,7 @@ cat > "$sub" << EOF
 #SBATCH --requeue
 
 export ENV_MODE=permanant
-export ENV_NAME="lorenz_bitflips"
+export ENV_NAME="ximp"
 module load miniforge
 
 python ${PYTHON_SCRIPT} \

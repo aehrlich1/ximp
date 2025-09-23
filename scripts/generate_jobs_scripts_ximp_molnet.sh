@@ -6,7 +6,7 @@
 PYTHON_SCRIPT="main.py"
 
 # ──────────────────  Hyper-parameter grids (from YAML)  ──────────────────
-TARGET_TASKS=("pIC50 (MERS-CoV Mpro)" "pIC50 (SARS-CoV-2 Mpro)")
+TARGET_TASKS=("ESOL" "Lipo" "FreeSolv")
 
 BATCH_SIZES=(64 128)
 LRS=(1e-3)
@@ -27,12 +27,12 @@ USE_JT=(True) # False combinations need to be ran seperately with JT_COARSITY ad
 USE_ERG=(True) # False
 
 # ───────────────────  Constants (single-valued YAML)  ────────────────────
-TASK="potency"
+TASK="molecule_net"
 ENCODING_DIM=8
 NUM_CV_FOLDS=5
 NUM_CV_BINS=10
 SCAFFOLD_SPLIT_VAL_SZ=0.1
-REPR_MODEL=("EHIMP_a" "EHIMP_b" "EHIMP_c")
+REPR_MODEL=("XIMP_a" "XIMP_b" "XIMP_c")
 OUT_DIM=1
 
 # ───────────────────  Slurm defaults – tweak as needed  ──────────────────
@@ -65,7 +65,7 @@ for tgt in "${TARGET_TASKS[@]}"; do
 cat > "$sub" << EOF
 #!/bin/bash
 #SBATCH --job-name="Polaris: ${tgt} bs=${bs} lr=${lr} hc=${hc}"
-#SBATCH --comment="FG Data Mining / Lorenz Kummer"
+#SBATCH --comment="FG Data Mining"
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --time=${SLURM_TIME}
@@ -75,7 +75,7 @@ cat > "$sub" << EOF
 #SBATCH --requeue
 
 export ENV_MODE=permanant
-export ENV_NAME="lorenz_bitflips"
+export ENV_NAME="ximp"
 module load miniforge
 
 python ${PYTHON_SCRIPT} \
@@ -102,7 +102,7 @@ python ${PYTHON_SCRIPT} \
   --out_dim ${OUT_DIM}
 EOF
 
-                                chmod +x "$sub"
+                              chmod +x "$sub"
                               echo "Created $sub"
                             done
                           done
