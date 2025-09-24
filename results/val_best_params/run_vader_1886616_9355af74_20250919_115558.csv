@@ -1,2 +1,2 @@
 task,target_task,batch_size,dropout,epochs,lr,weight_decay,repr_model,num_layers,encoding_dim,hidden_channels,out_channels,proj_hidden_dim,out_dim,num_cv_folds,num_cv_bins,scaffold_split_val_sz,use_erg,use_jt,jt_coarsity,rg_embedding_dim,radius,seed,mean_val_loss,std_val_loss,mae_test_scaffold
-molecule_net,FreeSolv,128,0.1,150,0.001,0.0001,HOIMP,3,8,32,16,16,1,5,10,0.1,False,True,2,16,,42,0.7040300011634827,0.07919732396802995,1.9413477204166927
+molecule_net,FreeSolv,128,0.1,150,0.001,0.0001,XIMP,3,8,32,16,16,1,5,10,0.1,False,True,2,16,,42,0.7040300011634827,0.07919732396802995,1.9413477204166927

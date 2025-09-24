@@ -1,2 +1,2 @@
 task,target_task,batch_size,dropout,epochs,lr,weight_decay,repr_model,num_layers,encoding_dim,hidden_channels,out_channels,proj_hidden_dim,out_dim,num_cv_folds,num_cv_bins,scaffold_split_val_sz,use_erg,use_jt,jt_coarsity,rg_embedding_dim,radius,seed,mean_val_loss,std_val_loss,mae_test_scaffold
-admet,HLM,64,0.1,150,0.001,0.0001,HOIMP,3,8,16,16,16,1,5,10,0.1,True,True,2,16,,404,0.38460386991500856,0.04849619571326128,0.5652692567917609
+admet,HLM,64,0.1,150,0.001,0.0001,XIMP,3,8,16,16,16,1,5,10,0.1,True,True,2,16,,404,0.38460386991500856,0.04849619571326128,0.5652692567917609

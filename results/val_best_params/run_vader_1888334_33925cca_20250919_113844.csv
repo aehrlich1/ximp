@@ -1,2 +1,2 @@
 task,target_task,batch_size,dropout,epochs,lr,weight_decay,repr_model,num_layers,encoding_dim,hidden_channels,out_channels,proj_hidden_dim,out_dim,num_cv_folds,num_cv_bins,scaffold_split_val_sz,use_erg,use_jt,jt_coarsity,rg_embedding_dim,radius,seed,mean_val_loss,std_val_loss,mae_test_scaffold
-potency,pIC50 (MERS-CoV Mpro),128,0.1,150,0.001,0.0001,HOIMP,3,8,16,16,32,1,5,10,0.1,True,False,1,16,,8888,0.48200427889823916,0.060098141229113236,0.7378983916817131
+potency,pIC50 (MERS-CoV Mpro),128,0.1,150,0.001,0.0001,XIMP,3,8,16,16,32,1,5,10,0.1,True,False,1,16,,8888,0.48200427889823916,0.060098141229113236,0.7378983916817131
