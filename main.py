@@ -1,10 +1,15 @@
 import argparse
+import os
+
+import torch
 
 from src.trainer import Trainer
 from src.utils import str2bool
 
 
 def main(params: dict) -> None:
+    os.makedirs("results", exist_ok=True)
+    torch.set_num_threads(1)
     trainer = Trainer(params=params)
     trainer.run()
 

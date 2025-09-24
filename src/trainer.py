@@ -56,10 +56,10 @@ class Trainer:
             valid_fold = self.train_scaffold[valid_idx]
 
             train_fold_dataloader = DataLoader(
-                train_fold, batch_size=self.params["batch_size"], shuffle=True
+                train_fold, batch_size=self.params["batch_size"], shuffle=True, num_workers=0
             )
             valid_fold_dataloader = DataLoader(
-                valid_fold, batch_size=self.params["batch_size"], shuffle=False
+                valid_fold, batch_size=self.params["batch_size"], shuffle=False, num_workers=0
             )
 
             self.train(train_fold_dataloader, valid_fold_dataloader)
@@ -93,7 +93,7 @@ class Trainer:
 
     def train_final(self, train_dataset) -> None:
         train_dataloader = DataLoader(
-            train_dataset, batch_size=self.params["batch_size"], shuffle=True
+            train_dataset, batch_size=self.params["batch_size"], shuffle=True, num_workers=0
         )
         for _ in range(self.params["epochs"]):
             self._train_loop(train_dataloader)
@@ -206,7 +206,7 @@ class Trainer:
         self.model.eval()
         smiles = dataset.smiles
 
-        dataloader = DataLoader(dataset, batch_size=len(dataset), shuffle=False)
+        dataloader = DataLoader(dataset, batch_size=len(dataset), shuffle=False, num_workers=0)
 
         with torch.no_grad():
             data = next(iter(dataloader))
