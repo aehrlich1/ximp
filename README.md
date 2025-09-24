@@ -27,21 +27,25 @@ To execute a single run, pass the hyperparameter configuration as flags to `main
 python main.py --help
 ```
 
-Example: Use `XIMP` to perform molecular property prediction on the `admet` task, specifically the `MLM` endpoint. Do not use an ErG tree abstraction, but do use a junction tree abstraction with a coarseness values of 2
+Example 1: Run a sample run with the default hyperparameter configuration:
+```
+python main.py
+```
+
+Example 2: Use `XIMP` to perform molecular property prediction on the `admet` task, specifically the `MLM` endpoint. Do not use an ErG tree abstraction, but do use a junction tree abstraction with a coarseness values of 2
 
 ```
-python --repr_model="XIMP" --task="admet" --target_task="MLM" --use_erg="FALSE" --use_jt="TRUE" --jt_coarsity=2
-
+python main.py --repr_model="XIMP" --task="admet" --target_task="MLM" --use_erg="FALSE" --use_jt="TRUE" --jt_coarsity=2
 ```
 
 ### Batch Run
-To execute multiple hyperparameter configurations in parallel, use `main_batch.py` and define the hyperparameters to be used in a `csv` file. Sample hyperparamters to reproduce the results shown in the paper can be found in the `hyperparameters` folder.
+To execute multiple hyperparameter configurations in parallel, use `main_batch.py` and define the hyperparameters to be used in a `csv` file. Sample hyperparamters to reproduce the results shown in the paper can be found in the `hyperparameters` folder. Be sure to set the hyperparameter filename at the top of the `main_batch.py` file. Default: "global_best_params.csv".
 
-`evaluation.ipynb` lets you evaluate the results to produce a table.
+```
+python main_batch.py
+```
 
-### Hyperparameter Optimization
-We used a SLURM HPC cluster to massively parallelize our experiments. The bash scripts used to start all our jobs can be found in the `scripts` folder.
-
+`evaluation.ipynb` lets you evaluate the results to reproduce the tables mentioned in the paper.
 
 ## Datasets
 We investigate 2 datasets, each containing multiple regression tasks:
